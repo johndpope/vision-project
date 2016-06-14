@@ -150,6 +150,9 @@ bool first_geo_init;
 std::vector<DepthSpacePoint> depthSpace(colorwidth * colorheight);
 DepthSpacePoint depthSpace2[colorwidth*colorheight];
 //DepthSpacePoint depthSSSS[colorwidth*colorheight];
+cuda::GpuMat input_gpu;
+cuda::GpuMat output_gpu;
+Mat output;
 void Threshold_Demo(int, void*)
 {
 	/* 0: Binary
@@ -160,7 +163,7 @@ void Threshold_Demo(int, void*)
 	*/
 
 	threshold(src_gray, dst, threshold_value, max_BINARY_value, threshold_type);
-
+	
 	imshow(window_name, dst);
 }
 //-------------End of threshold function stuf------------------------//
@@ -447,24 +450,28 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		
 		
 
-		clock_t startstart = clock();
+		
 		//------------------image processing to find the contour---------------//
-		cvtColor(I, hsv, COLOR_BGR2HSV);
+		
+		input_gpu.upload(I);
+		
+		cuda::cvtColor(input_gpu, output_gpu, COLOR_BGR2HSV);
+		
+		output_gpu.download(hsv);
 		cvtColor(I, I_gray, CV_BGR2GRAY);
 		
 		resize(I_gray, I_gray_resize, Size(colorwidth / 4, colorheight / 4));
-		
+		resize(hsv, hsv, Size(colorwidth / 4, colorheight / 4));
+
 		cuda::flip(I_gray_resize, I_gray_resize, 1);
-		
+			
 		
 		//-------------------ARUCO-------------------------
 
 
 		
 		detectMarkers(I_gray_resize, dictionary, markerCorners, markerIds, parameters, rejectedCandidates);
-		start_K11 = std::clock();
-		double dt = abs(startstart - start_K11);
-		cout << " dt : " << dt << endl;
+	
 		if (markerIds.size() > 0){
 		//	//cv::aruco::drawDetectedMarkers(image, markerCorners, markerIds);
 
@@ -486,7 +493,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		
 		
 		//---------------ARUCO END---------------------
-
+		
 		Scalar greenlow = Scalar(40, 50, 50);
 		Scalar greenhigh = Scalar(85, 220, 220);
 
@@ -500,13 +507,13 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 
 		Scalar yellowlow = Scalar(20, 124, 123);
 		Scalar yellowhigh = Scalar(30, 256, 256);
-
-
+		
+		
 		inRange(hsv, yellowlow, yellowhigh, I_inrangeyellow);
 		inRange(hsv, bluelow,bluehigh, I_inrangeblue);
 		inRange(hsv, redlow, redhigh, I_inrangered);
 		inRange(hsv, greenlow, greenhigh, I_inrangegreen);
-
+		
 		bitwise_or(I_inrangeyellow, I_inrangeblue, I_inrangeblue);
 		bitwise_or(I_inrangered, I_inrangegreen, I_inrangegreen);
 		bitwise_or(I_inrangeblue, I_inrangegreen, I_inrange);
@@ -518,7 +525,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		imshow("i-range", I_inrange);
 		vector<Vec4i> hierarchy;
 		vector<vector<Point> > contours;
-
+		
 
 		findContours(I_inrange, contours, RETR_LIST, CHAIN_APPROX_NONE);
 		vector<Point2f>center(contours.size());
@@ -529,7 +536,8 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		vector<vector<Point> > contours_poly(contours.size());
 
 		//////////////////////////
-
+		
+		
 		for (int i = 0; i < contours.size(); i++)
 		{
 
@@ -538,9 +546,9 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 
 			
 		}
-
+		
 		//////////////////////
-
+		clock_t startstart = clock();
 		int x_pos=0, y_pos=0;
 		int dummpy_used;
 		string s;
@@ -550,8 +558,8 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 				int index3 = h*colorwidth + w;
 				ColorSpacePoint dummycolor;
 
-				int _X = (int)(floor(depthSpace2[index3].X));
-				int _Y = (int)(floor(depthSpace2[index3].Y));
+				int _X = (int)depthSpace2[index3].X;
+				int _Y = (int)depthSpace2[index3].Y;
 				if ((_X >= 0) && (_X < width) && (_Y >= 0) && (_Y < height)){
 					int depth_index = (_Y*width) + _X;
 					int index3_color = index3 * 4;
@@ -567,6 +575,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 			}
 		}
 
+		
 		
 		
 
@@ -690,6 +699,12 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 				}
 			}
 		}
+
+		start_K11 = std::clock();
+		double dt = abs(startstart - start_K11);
+		cout << " dt : " << dt << endl;
+
+		
 		solvePnP(Mat(geo_deform), Mat(tracking_colors), instrinsics, distortion, rvec_new, tvec_new, false);
 
 		projectPoints(geo_deform, rvec_new, tvec_new, instrinsics, distortion, output_deform);
@@ -712,13 +727,14 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		//imshow("In range", I_inrange);
 		first_geo_init = false;
 		get_mesh(&global_geo);
+		duration_vision = (std::clock() - start_K11) / (double)CLOCKS_PER_SEC;
+		cout << "Duration vision: " << duration_vision << endl;
+
 	}
 
 	//drawContours(I_inrange, contours, 0, Scalar(255,100,100), 2, 8);
 
-	duration_vision = (std::clock() - start_K11) / (double)CLOCKS_PER_SEC;
-	cout << "Duration vision: " <<duration_vision << endl;
-	
+
 	
 	int found_index = 0;
 	float* fdest = (float*)dest;
