@@ -242,12 +242,12 @@ void get_mesh(Geometry *p){
 	mesh_geometry.empty();
 	for (int i = 0; i <global_geo.return_numNodes(); i++){
 
-		double dx = (geo_deform[1].x-geo_deform[0].x );
+		//double dx = (geo_deform[1].x-geo_deform[0].x );
 		if (first_geo_init == true){
-			mesh_geometry.push_back(Point3f(((p->return_x(i) - 5.0f)), (p->return_y(i) - 5.0f), 0));
+			mesh_geometry.push_back(Point3f(((p->return_x(i) - 5.0f)) / 5.0, (p->return_y(i) - 5.0f) /5.0, 0));
 		}
 		else {
-			mesh_geometry[i] = (Point3f(((p->return_x(i) - 5.0f)),(p->return_y(i) - 5.0f), 0));
+			mesh_geometry[i] = (Point3f(((p->return_x(i) - 5.0f)) / 5.0, (p->return_y(i) - 5.0f) /5.0, 0));
 		}
 		
 		
@@ -460,18 +460,18 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		output_gpu.download(hsv);
 		cvtColor(I, I_gray, CV_BGR2GRAY);
 		
-		resize(I_gray, I_gray_resize, Size(colorwidth / 4, colorheight / 4));
-		resize(hsv, hsv, Size(colorwidth / 4, colorheight / 4));
+		resize(I_gray, I_gray_resize, Size(colorwidth / 8, colorheight / 8));
+		//resize(hsv, hsv, Size(colorwidth / 4, colorheight / 4));
 
-		cuda::flip(I_gray_resize, I_gray_resize, 1);
+		flip(I_gray_resize, I_gray_resize, 1);
 			
 		
 		//-------------------ARUCO-------------------------
-
-
 		
+		clock_t startstart = clock();
 		detectMarkers(I_gray_resize, dictionary, markerCorners, markerIds, parameters, rejectedCandidates);
-	
+		
+
 		if (markerIds.size() > 0){
 		//	//cv::aruco::drawDetectedMarkers(image, markerCorners, markerIds);
 
@@ -479,8 +479,8 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 			for (unsigned int i = 0; i < markerIds.size(); i++){
 				
 				for (int j = 0; j < 4; j++){
-					markerCorners[i][j].x = colorwidth - markerCorners[i][j].x*4.0;
-					markerCorners[i][j].y = markerCorners[i][j].y*4.0;
+					markerCorners[i][j].x = colorwidth - markerCorners[i][j].x*8.0;
+					markerCorners[i][j].y = markerCorners[i][j].y*8.0;
 					/*Point2f center((markerCorners[i][j].x), (markerCorners[i][j].y));
 
 					circle(I, center, 2, Scalar(0, 0, 255), 3, 8, 0);*/
@@ -491,242 +491,246 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 
 		}
 		
-		
-		//---------------ARUCO END---------------------
-		
-		Scalar greenlow = Scalar(40, 50, 50);
-		Scalar greenhigh = Scalar(85, 220, 220);
+		if (0){
+			//---------------ARUCO END---------------------
 
-		Scalar bluelow = Scalar(105, 50, 50);
-		Scalar bluehigh = Scalar(125, 255, 255);
+			Scalar greenlow = Scalar(40, 50, 50);
+			Scalar greenhigh = Scalar(85, 220, 220);
 
-		
-		Scalar redlow = Scalar(0, 100, 0);
-		Scalar redhigh = Scalar(10, 255, 255);
+			Scalar bluelow = Scalar(105, 50, 50);
+			Scalar bluehigh = Scalar(125, 255, 255);
 
 
-		Scalar yellowlow = Scalar(20, 124, 123);
-		Scalar yellowhigh = Scalar(30, 256, 256);
-		
-		
-		inRange(hsv, yellowlow, yellowhigh, I_inrangeyellow);
-		inRange(hsv, bluelow,bluehigh, I_inrangeblue);
-		inRange(hsv, redlow, redhigh, I_inrangered);
-		inRange(hsv, greenlow, greenhigh, I_inrangegreen);
-		
-		bitwise_or(I_inrangeyellow, I_inrangeblue, I_inrangeblue);
-		bitwise_or(I_inrangered, I_inrangegreen, I_inrangegreen);
-		bitwise_or(I_inrangeblue, I_inrangegreen, I_inrange);
-		
-		Mat element = getStructuringElement(MORPH_ELLIPSE, Size(3, 3), Point(0, 0));
-		erode(I_inrange, I_inrange, element);
-		
-		dilate(I_inrange, I_inrange, element);
-		imshow("i-range", I_inrange);
-		vector<Vec4i> hierarchy;
-		vector<vector<Point> > contours;
-		
+			Scalar redlow = Scalar(0, 100, 0);
+			Scalar redhigh = Scalar(10, 255, 255);
 
-		findContours(I_inrange, contours, RETR_LIST, CHAIN_APPROX_NONE);
-		vector<Point2f>center(contours.size());
-		vector<int>color_bool(contours.size());
-		vector<float>radius(contours.size());
-		vector<string>world_string(contours.size());
-		vector<Point2f>world_3d(contours.size());
-		vector<vector<Point> > contours_poly(contours.size());
 
-		//////////////////////////
-		
-		
-		for (int i = 0; i < contours.size(); i++)
-		{
+			Scalar yellowlow = Scalar(20, 124, 123);
+			Scalar yellowhigh = Scalar(30, 256, 256);
 
-			approxPolyDP(Mat(contours[i]), contours_poly[i], 4, true);
-			minEnclosingCircle((Mat)contours_poly[i], center[i], radius[i]);
 
-			
-		}
-		
-		//////////////////////
-		clock_t startstart = clock();
-		int x_pos=0, y_pos=0;
-		int dummpy_used;
-		string s;
-		Mat colorImage = Mat::zeros(colorheight, colorwidth, CV_8UC4);
-		for (int h = 0; h < colorheight; h++){//colorheight
-			for (int w = 0; w < colorwidth; w++){//colorwidth
-				int index3 = h*colorwidth + w;
-				ColorSpacePoint dummycolor;
+			inRange(hsv, yellowlow, yellowhigh, I_inrangeyellow);
+			inRange(hsv, bluelow, bluehigh, I_inrangeblue);
+			inRange(hsv, redlow, redhigh, I_inrangered);
+			inRange(hsv, greenlow, greenhigh, I_inrangegreen);
 
-				int _X = (int)depthSpace2[index3].X;
-				int _Y = (int)depthSpace2[index3].Y;
-				if ((_X >= 0) && (_X < width) && (_Y >= 0) && (_Y < height)){
-					int depth_index = (_Y*width) + _X;
-					int index3_color = index3 * 4;
-					/*CameraSpacePoint q = depth2xyz[depth_index]*/
-					ColorSpacePoint p = depth2rgb[depth_index];
-					int idx = ((int)p.X) + colorwidth*((int)p.Y);
-					colorImage.data[index3_color + 0] = rgbimage[4 * idx + 0];
-					colorImage.data[index3_color + 1] = rgbimage[4 * idx + 1];
-					colorImage.data[index3_color + 2] = rgbimage[4 * idx + 2];
-				}
+			bitwise_or(I_inrangeyellow, I_inrangeblue, I_inrangeblue);
+			bitwise_or(I_inrangered, I_inrangegreen, I_inrangegreen);
+			bitwise_or(I_inrangeblue, I_inrangegreen, I_inrange);
+
+			Mat element = getStructuringElement(MORPH_ELLIPSE, Size(3, 3), Point(0, 0));
+			erode(I_inrange, I_inrange, element);
+
+			dilate(I_inrange, I_inrange, element);
+			//imshow("i-range", I_inrange);
+			vector<Vec4i> hierarchy;
+			vector<vector<Point> > contours;
+
+
+			findContours(I_inrange, contours, RETR_LIST, CHAIN_APPROX_NONE);
+			vector<Point2f>center(contours.size());
+			vector<int>color_bool(contours.size());
+			vector<float>radius(contours.size());
+			vector<string>world_string(contours.size());
+			vector<Point2f>world_3d(contours.size());
+			vector<vector<Point> > contours_poly(contours.size());
+
+			//////////////////////////
+
+
+			for (int i = 0; i < contours.size(); i++)
+			{
+
+				approxPolyDP(Mat(contours[i]), contours_poly[i], 4, true);
+				minEnclosingCircle((Mat)contours_poly[i], center[i], radius[i]);
 
 
 			}
-		}
 
-		
-		
-		
+			//////////////////////
 
-		for (int i = 0; i < contours.size(); i++)
-		{
-			int w = center[i].x;
-			int h = center[i].y;
-			int index3 = h*colorwidth + w;
-			int g = 0;
-			if ((w >= 0) && (w < colorwidth) && (h >= 0) && (h < colorheight)){
+			int x_pos = 0, y_pos = 0;
+			int dummpy_used;
+			string s;
+			Mat colorImage = Mat::zeros(colorheight, colorwidth, CV_8UC4);
+			for (int h = 0; h < colorheight; h++){//colorheight
+				for (int w = 0; w < colorwidth; w++){//colorwidth
+					int index3 = h*colorwidth + w;
+					ColorSpacePoint dummycolor;
 
-			}
-			else{
-				index3 = 0;
-			}
-			if (radius[i] > 5){
-				if ((int)index3 < colorwidth*colorheight){
-
-					int _X = (int)((depthSpace2[index3].X));
-					int _Y = (int)((depthSpace2[index3].Y));
+					int _X = (int)depthSpace2[index3].X;
+					int _Y = (int)depthSpace2[index3].Y;
 					if ((_X >= 0) && (_X < width) && (_Y >= 0) && (_Y < height)){
 						int depth_index = (_Y*width) + _X;
 						int index3_color = index3 * 4;
-						CameraSpacePoint q = depth2xyz[depth_index];
+						/*CameraSpacePoint q = depth2xyz[depth_index]*/
 						ColorSpacePoint p = depth2rgb[depth_index];
 						int idx = ((int)p.X) + colorwidth*((int)p.Y);
+						colorImage.data[index3_color + 0] = rgbimage[4 * idx + 0];
+						colorImage.data[index3_color + 1] = rgbimage[4 * idx + 1];
+						colorImage.data[index3_color + 2] = rgbimage[4 * idx + 2];
+					}
 
 
-						if ((rgbimage[4 * idx + 0] < 90) && (rgbimage[4 * idx + 1]>75) && (rgbimage[4 * idx + 2] < 90)){
-							g = 200;
-							//if (((int)w == (int)(center[i].x)) && ((int)h == (int)(center[i].y))){
-							world_string[i] = "Green: " + to_string(q.X) + " " + to_string(q.Y) + " " + to_string(q.Z);
-							world_3d[i] = Point2f(p.X, p.Y);
-						
-							tracking_colors[2].x = p.X;
-							tracking_colors[2].y = p.Y;
-						/*	mesh_geometry[1].x = geo_deform[2].x = q.X;
-							mesh_geometry[1].y = geo_deform[2].y = q.Y;
-							mesh_geometry[1].z = geo_deform[2].z = q.Z;*/
+				}
+			}
 
-							geo_deform[2].x = q.X;
-							 geo_deform[2].y = q.Y;
-							geo_deform[2].z = q.Z;
 
-							//circle(colorImage, Point((int)center[i].x, (int)center[i].y), radius[i], Scalar(200, g, 20), -1, 1);
-							if (world_string[i].size() != 0){
-								putText(I, world_string[i], Point((int)world_3d[i].x + 5, (int)world_3d[i].y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 2.0);
-								circle(I, Point((int)world_3d[i].x, (int)world_3d[i].y), radius[i], Scalar(0, 255, 0), -1, 1);
+
+
+
+			for (int i = 0; i < contours.size(); i++)
+			{
+				int w = center[i].x;
+				int h = center[i].y;
+				int index3 = h*colorwidth + w;
+				int g = 0;
+				if ((w >= 0) && (w < colorwidth) && (h >= 0) && (h < colorheight)){
+
+				}
+				else{
+					index3 = 0;
+				}
+				if (radius[i] > 5){
+					if ((int)index3 < colorwidth*colorheight){
+
+						int _X = (int)((depthSpace2[index3].X));
+						int _Y = (int)((depthSpace2[index3].Y));
+						if ((_X >= 0) && (_X < width) && (_Y >= 0) && (_Y < height)){
+							int depth_index = (_Y*width) + _X;
+							int index3_color = index3 * 4;
+							CameraSpacePoint q = depth2xyz[depth_index];
+							ColorSpacePoint p = depth2rgb[depth_index];
+							int idx = ((int)p.X) + colorwidth*((int)p.Y);
+
+
+							if ((rgbimage[4 * idx + 0] < 90) && (rgbimage[4 * idx + 1]>75) && (rgbimage[4 * idx + 2] < 90)){
+								g = 200;
+								//if (((int)w == (int)(center[i].x)) && ((int)h == (int)(center[i].y))){
+								world_string[i] = "Green: " + to_string(q.X) + " " + to_string(q.Y) + " " + to_string(q.Z);
+								world_3d[i] = Point2f(p.X, p.Y);
+
+								tracking_colors[2].x = p.X;
+								tracking_colors[2].y = p.Y;
+								/*	mesh_geometry[1].x = geo_deform[2].x = q.X;
+									mesh_geometry[1].y = geo_deform[2].y = q.Y;
+									mesh_geometry[1].z = geo_deform[2].z = q.Z;*/
+
+								geo_deform[2].x = q.X;
+								geo_deform[2].y = q.Y;
+								geo_deform[2].z = q.Z;
+
+								//circle(colorImage, Point((int)center[i].x, (int)center[i].y), radius[i], Scalar(200, g, 20), -1, 1);
+								if (world_string[i].size() != 0){
+									putText(I, world_string[i], Point((int)world_3d[i].x + 5, (int)world_3d[i].y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 2.0);
+									circle(I, Point((int)world_3d[i].x, (int)world_3d[i].y), radius[i], Scalar(0, 255, 0), -1, 1);
+								}
 							}
-						}
-						else if ((100 < rgbimage[4 * idx + 0]) && (rgbimage[4 * idx + 1] < 100) && (rgbimage[4 * idx + 2] < 100)){
+							else if ((100 < rgbimage[4 * idx + 0]) && (rgbimage[4 * idx + 1] < 100) && (rgbimage[4 * idx + 2] < 100)){
 
-							//if (((int)w == (int)(center[i].x)) && ((int)h == (int)(center[i].y))){
-							world_string[i] = "Red: " + to_string(q.X) + " " + to_string(q.Y) + " " + to_string(q.Z);
-							world_3d[i] = Point2f(p.X, p.Y);
-							
-							tracking_colors[3].x = p.X;
-							tracking_colors[3].y = p.Y;
-							/*mesh_geometry[76].x = geo_deform[3].x = q.X;
-							mesh_geometry[76].y = geo_deform[3].y = q.Y;
-							mesh_geometry[76].z = geo_deform[3].z = q.Z;*/
+								//if (((int)w == (int)(center[i].x)) && ((int)h == (int)(center[i].y))){
+								world_string[i] = "Red: " + to_string(q.X) + " " + to_string(q.Y) + " " + to_string(q.Z);
+								world_3d[i] = Point2f(p.X, p.Y);
 
-							geo_deform[3].x = q.X;
-							geo_deform[3].y = q.Y;
-							geo_deform[3].z = q.Z;
-							//circle(colorImage, Point((int)center[i].x, (int)center[i].y), radius[i], Scalar(200, g, 20), -1, 1);
-							if (world_string[i].size() != 0){
-								putText(I, world_string[i], Point((int)world_3d[i].x + 5, (int)world_3d[i].y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255, 0, 0), 2.0);
-								circle(I, Point((int)world_3d[i].x, (int)world_3d[i].y), radius[i], Scalar(0, 0, 255), -1, 1);
+								tracking_colors[3].x = p.X;
+								tracking_colors[3].y = p.Y;
+								/*mesh_geometry[76].x = geo_deform[3].x = q.X;
+								mesh_geometry[76].y = geo_deform[3].y = q.Y;
+								mesh_geometry[76].z = geo_deform[3].z = q.Z;*/
+
+								geo_deform[3].x = q.X;
+								geo_deform[3].y = q.Y;
+								geo_deform[3].z = q.Z;
+								//circle(colorImage, Point((int)center[i].x, (int)center[i].y), radius[i], Scalar(200, g, 20), -1, 1);
+								if (world_string[i].size() != 0){
+									putText(I, world_string[i], Point((int)world_3d[i].x + 5, (int)world_3d[i].y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255, 0, 0), 2.0);
+									circle(I, Point((int)world_3d[i].x, (int)world_3d[i].y), radius[i], Scalar(0, 0, 255), -1, 1);
+								}
 							}
-						}
-						else if ((80 > rgbimage[4 * idx + 0]) && (rgbimage[4 * idx + 1] < 80) && (rgbimage[4 * idx + 2] >60)){
+							else if ((80 > rgbimage[4 * idx + 0]) && (rgbimage[4 * idx + 1] < 80) && (rgbimage[4 * idx + 2] >60)){
 
-							//if (((int)w == (int)(center[i].x)) && ((int)h == (int)(center[i].y))){
-							world_string[i] = "Blue: " + to_string(q.X) + " " + to_string(q.Y) + " " + to_string(q.Z);
-							world_3d[i] = Point2f(p.X, p.Y);
-							
-							tracking_colors[0].x = p.X;
-							tracking_colors[0].y = p.Y;
-							/*mesh_geometry[0].x = geo_deform[0].x = q.X;
-							mesh_geometry[0].y= geo_deform[0].y = q.Y;
-							mesh_geometry[0].z = geo_deform[0].z = q.Z;*/
-							geo_deform[0].x = q.X;
-							geo_deform[0].y = q.Y;
-							 geo_deform[0].z = q.Z;
+								//if (((int)w == (int)(center[i].x)) && ((int)h == (int)(center[i].y))){
+								world_string[i] = "Blue: " + to_string(q.X) + " " + to_string(q.Y) + " " + to_string(q.Z);
+								world_3d[i] = Point2f(p.X, p.Y);
 
-							//circle(colorImage, Point((int)center[i].x, (int)center[i].y), radius[i], Scalar(200, g, 20), -1, 1);
-							if (world_string[i].size() != 0){
-								putText(I, world_string[i], Point((int)world_3d[i].x + 5, (int)world_3d[i].y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 0, 255), 2.0);
-								circle(I, Point((int)world_3d[i].x, (int)world_3d[i].y), radius[i], Scalar(255, 0, 0), -1, 1);
+								tracking_colors[0].x = p.X;
+								tracking_colors[0].y = p.Y;
+								/*mesh_geometry[0].x = geo_deform[0].x = q.X;
+								mesh_geometry[0].y= geo_deform[0].y = q.Y;
+								mesh_geometry[0].z = geo_deform[0].z = q.Z;*/
+								geo_deform[0].x = q.X;
+								geo_deform[0].y = q.Y;
+								geo_deform[0].z = q.Z;
+
+								//circle(colorImage, Point((int)center[i].x, (int)center[i].y), radius[i], Scalar(200, g, 20), -1, 1);
+								if (world_string[i].size() != 0){
+									putText(I, world_string[i], Point((int)world_3d[i].x + 5, (int)world_3d[i].y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 0, 255), 2.0);
+									circle(I, Point((int)world_3d[i].x, (int)world_3d[i].y), radius[i], Scalar(255, 0, 0), -1, 1);
+								}
 							}
-						}
-						else if ((100 < rgbimage[4 * idx + 0]) && (rgbimage[4 * idx + 1] > 100) && (rgbimage[4 * idx + 2] < 80)){
+							else if ((100 < rgbimage[4 * idx + 0]) && (rgbimage[4 * idx + 1] > 100) && (rgbimage[4 * idx + 2] < 80)){
 
-							//if (((int)w == (int)(center[i].x)) && ((int)h == (int)(center[i].y))){
-							world_string[i] = "Yellow: " + to_string(q.X) + " " + to_string(q.Y) + " " + to_string(q.Z);
-							world_3d[i] = Point2f(p.X, p.Y);
-						
-							tracking_colors[1].x = p.X;
-							tracking_colors[1].y = p.Y;
-							/*mesh_geometry[75].x = geo_deform[1].x = q.X;
-							mesh_geometry[75].y = geo_deform[1].y = q.Y;
-							mesh_geometry[75].z = geo_deform[1].z = q.Z;*/
+								//if (((int)w == (int)(center[i].x)) && ((int)h == (int)(center[i].y))){
+								world_string[i] = "Yellow: " + to_string(q.X) + " " + to_string(q.Y) + " " + to_string(q.Z);
+								world_3d[i] = Point2f(p.X, p.Y);
 
-							 geo_deform[1].x = q.X;
-							geo_deform[1].y = q.Y;
-							geo_deform[1].z = q.Z;
-							//circle(colorImage, Point((int)center[i].x, (int)center[i].y), radius[i], Scalar(200, g, 20), -1, 1);
-							if (world_string[i].size() != 0){
-								putText(I, world_string[i], Point((int)world_3d[i].x + 5, (int)world_3d[i].y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255, 255, 20), 2.0);
-								circle(I, Point((int)world_3d[i].x, (int)world_3d[i].y), radius[i], CV_RGB(255, 255, 20), -1, 1);
+								tracking_colors[1].x = p.X;
+								tracking_colors[1].y = p.Y;
+								/*mesh_geometry[75].x = geo_deform[1].x = q.X;
+								mesh_geometry[75].y = geo_deform[1].y = q.Y;
+								mesh_geometry[75].z = geo_deform[1].z = q.Z;*/
+
+								geo_deform[1].x = q.X;
+								geo_deform[1].y = q.Y;
+								geo_deform[1].z = q.Z;
+								//circle(colorImage, Point((int)center[i].x, (int)center[i].y), radius[i], Scalar(200, g, 20), -1, 1);
+								if (world_string[i].size() != 0){
+									putText(I, world_string[i], Point((int)world_3d[i].x + 5, (int)world_3d[i].y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255, 255, 20), 2.0);
+									circle(I, Point((int)world_3d[i].x, (int)world_3d[i].y), radius[i], CV_RGB(255, 255, 20), -1, 1);
+								}
 							}
+
+
+
+
+
+
 						}
-
-
-
-
-
-
 					}
 				}
 			}
 		}
-
-		start_K11 = std::clock();
-		double dt = abs(startstart - start_K11);
-		cout << " dt : " << dt << endl;
+		
+		
 
 		
-		solvePnP(Mat(geo_deform), Mat(tracking_colors), instrinsics, distortion, rvec_new, tvec_new, false);
+		//solvePnP(Mat(geo_deform), Mat(tracking_colors), instrinsics, distortion, rvec_new, tvec_new, false);
 
-		projectPoints(geo_deform, rvec_new, tvec_new, instrinsics, distortion, output_deform);
+		//projectPoints(geo_deform, rvec_new, tvec_new, instrinsics, distortion, output_deform);
 		if (markerIds.size() > 0){
 			projectPoints(mesh_geometry, rvec_aruco[0], tvec_aruco[0], instrinsics, distortion, mesh_geometry_display);
 			draw_mesh(&global_geo);
 		}
 		int thickness = 2;
 		int lineType = 8;
-
 		
-		line(I, output_deform[0], output_deform[1], Scalar(255, 0, 255), thickness, lineType);
+		
+		/*line(I, output_deform[0], output_deform[1], Scalar(255, 0, 255), thickness, lineType);
 		line(I, output_deform[1], output_deform[3], Scalar(255, 0, 255), thickness, lineType);
 		line(I, output_deform[3], output_deform[2], Scalar(255, 0, 255), thickness, lineType);
-		line(I, output_deform[2], output_deform[0], Scalar(255, 0, 255), thickness, lineType);
+		line(I, output_deform[2], output_deform[0], Scalar(255, 0, 255), thickness, lineType);*/
 		line(I, Point2f(0,0),Point2f(100,100), Scalar(100, 10, 255), thickness, lineType);
 		
 		imshow("original", I);
+		
 		//imshow("colorimage", colorImage);
 		//imshow("In range", I_inrange);
 		first_geo_init = false;
+		
 		get_mesh(&global_geo);
+		start_K11 = std::clock();
+		double dt = abs(startstart - start_K11);
+		cout << " dt : " << dt << endl;
 		duration_vision = (std::clock() - start_K11) / (double)CLOCKS_PER_SEC;
 		cout << "Duration vision: " << duration_vision << endl;
 
@@ -949,7 +953,7 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 	greenUpper.push_back(Point3d(64, 255, 255));
 
 	A = Mat::zeros(height, width, CV_8U);
-	dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_100);
+	dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_50);
 	ostringstream convert;
 	for (int i = 0; i < 10; i++){
 		cv::aruco::drawMarker(dictionary, i, 200, markerImage, 1);
