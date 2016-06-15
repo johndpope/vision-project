@@ -28,7 +28,7 @@ int main(void){
 	testing_geo.set_thickness(5);
 	testing_geo.initilizeMatrices();
 	testing_geo.initialize_CUDA();
-	kinect_main(0, NULL,&testing_geo);
+	//kinect_main(0, NULL,&testing_geo);
 	
 	 ///maain(0, NULL);
 	

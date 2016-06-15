@@ -62,12 +62,12 @@ class Geometry{
 	double *forceVec_x=NULL; //What is the force/unit
 	double *forceVec_y=NULL;
 
-	//K_matrix
+	//K_matrix nad M_matrix
 	double **K = NULL;
 	double *K_vector_form = NULL;
 	double *u = NULL;
 	double *f = NULL;
-
+	double **M = NULL;
 	
 	//For mouse movement's sudo force
 	double sudo_node_force;
