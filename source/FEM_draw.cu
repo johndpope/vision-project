@@ -822,6 +822,9 @@ int draw_things(Geometry *p)
 	int display_counter = 0;
 	//initilizing all of the vectors
 	p->initialize_dynamic();
+	p->set_beta1(1);
+	p->set_beta2(0.5);
+	p->set_dt(0.1);
 	
 	if (!p->get_dynamic()){
 		for (;;){
@@ -898,7 +901,20 @@ int draw_things(Geometry *p)
 	}
 	else{
 		for (;;){
+			if (display_counter < 100){
+				p->setSudoNode(20);
+				p->setSudoForcex(100.0);
+				p->setSudoForcey(100.0);
+			}
+			else {
+				p->setSudoNode(20);
+				p->setSudoForcex(0);
+				p->setSudoForcey(0);
+			}
+
+			p->make_K_matrix();
 			p->find_b();
+			p->update_vector();
 		}
 	}
 

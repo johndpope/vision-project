@@ -121,8 +121,7 @@ void Geometry::read_nodes(){
 
 	//u = new double[numNodes*dim];
 	b_rhs = new float[numNodes*dim];
-	u_dot = new double[numNodes*dim];
-	u_doubledot = new double[numNodes*dim];
+	
 
 
 }
@@ -275,7 +274,8 @@ void Geometry::initilizeMatrices(){
 
 	u = new double[numNodes*dim];
 	f = new double[numNodes*dim];
-
+	u_dot = new double[numNodes*dim];
+	u_doubledot = new double[numNodes*dim];
 	for (int i = 0; i < numNodes*dim; i++){
 		f[i] = 0;
 	}
@@ -418,16 +418,14 @@ void Geometry::update_vector(){
 
 
 
-	/*std::ofstream writenodes("global_K.txt");
 
-	for (int j = 0; j < N; j++){
-	for (int i = 0; i < N; i++){
-	writenodes << h_A_dense[IDX2C(i, j, N)] << " ";
-	}
-	writenodes << std::endl;
+	for (int j = 0; j <10; j++){
+		for (int i = 0; i < 10; i++){
+			std::cout<< L[IDX2C(i, j, N)] << std::endl;
+		}
+		std::cout << std::endl;
 	}
 
-	writenodes.close();*/
 
 	// --- Create device array and copy host array to it
 
@@ -576,8 +574,8 @@ void Geometry::update_vector(){
 
 
 	for (int i = 0; i < numNodes; i++) {
-		x[i] = x[i] + h_x[i * dim];
-		y[i] = y[i] + h_x[i * dim + 1];
+		u_doubledot[i] = u_doubledot[i] + h_x[i * dim];
+		u_doubledot[i] = u_doubledot[i] + h_x[i * dim + 1];
 		if (dim == 3){
 			z[i] = z[i] + h_x[i * dim + 2];
 		}
