@@ -822,9 +822,9 @@ int draw_things(Geometry *p)
 	int display_counter = 0;
 	//initilizing all of the vectors
 	p->initialize_dynamic();
-	p->set_beta1(1);
+	p->set_beta1(0.5);
 	p->set_beta2(0.5);
-	p->set_dt(0.1);
+	p->set_dt(0.01);
 	
 	if (!p->get_dynamic()){
 		for (;;){
@@ -856,8 +856,8 @@ int draw_things(Geometry *p)
 			//Solve the 2D FEM in each frame
 			if (display_counter < 100){
 				p->setSudoNode(20);
-				p->setSudoForcex(100.0);
-				p->setSudoForcey(100.0);
+				p->setSudoForcex(20.0);
+				p->setSudoForcey(20.0);
 			}
 			else {
 				p->setSudoNode(20);
@@ -901,20 +901,52 @@ int draw_things(Geometry *p)
 	}
 	else{
 		for (;;){
-			if (display_counter < 100){
+			if (display_counter < 2){
 				p->setSudoNode(20);
-				p->setSudoForcex(100.0);
-				p->setSudoForcey(100.0);
+				p->setSudoForcex(100);
+				p->setSudoForcey(100);
 			}
 			else {
 				p->setSudoNode(20);
 				p->setSudoForcex(0);
 				p->setSudoForcey(0);
 			}
+			if (display_counter == 500){
+				p->setSudoNode(20);
+				p->setSudoForcex(-100);
+				p->setSudoForcey(-100);
+			}
+			display_counter++;
+			t = glfwGetTime();
+			dt = t - t_old;
+			t_old = t;
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glPushMatrix();
+			glRotatef(rotate.x, 1.0, 0.0, 0.0);
+			glRotatef(rotate.y, 0.0, 100.0, 0.0);
+			glScalef(distance_change, distance_change, distance_change);
+			glTranslatef(translation.x, translation.y, translation.z);
+			/* Draw one frame */
+			//display();
+			//DrawGrid();
+			drawMesh(p);
+			glPopMatrix();
+			glFlush();
+			/* Swap buffers */
+			glfwSwapBuffers(window);
+			glfwPollEvents();
 
+			///dynamic calculations
 			p->make_K_matrix();
 			p->find_b();
 			p->update_vector();
+			p->update_dynamic_vectors();
+			p->update_dynamic_xyz();
+			t++;
+
+			/* Check if we are still running */
+			if (glfwWindowShouldClose(window))
+				break;
 		}
 	}
 

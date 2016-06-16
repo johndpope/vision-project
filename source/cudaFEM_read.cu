@@ -276,6 +276,7 @@ void Geometry::initilizeMatrices(){
 	f = new double[numNodes*dim];
 	u_dot = new double[numNodes*dim];
 	u_doubledot = new double[numNodes*dim];
+	u_doubledot_old = new double[numNodes*dim];
 	for (int i = 0; i < numNodes*dim; i++){
 		f[i] = 0;
 	}
@@ -329,7 +330,7 @@ void Geometry::AssembleGlobalElementMatrixBarycentric(int numP, int numE, int no
 	for (j = 0; j < numP; j++){
 		for (i = 0; i < numP; i++){
 			K[IDX2C(j, i, numP)] = 0;
-
+			L[IDX2C(j, i, numP)] = 0;
 			global_M[IDX2C(j, i, numP)] = 0;
 		}
 	}
@@ -376,7 +377,8 @@ void Geometry::find_b(){
 	double use_number;
 	double dummy_row;
 	//I am going to apply a forcef only at the initial time step, and then will be zero.
-	this->ApplySudoForcesBarycentric(numNodes*dim, 10, localcoordForce, elemForce, 10, 10, f, nodesInElem, thickness, x, y, displaceInElem);
+	
+	
 	for (int i = 0; i < numNodes*dim; i++){
 		use_number = 0;
 		for (int j = 0; j < numNodes*dim; j++){
@@ -385,17 +387,34 @@ void Geometry::find_b(){
 			use_number = use_number + h_A_dense[IDX2C(i, j, du)] * dummy_row;
 		}
 		b_rhs[i] = f[i] - use_number;
-		std::cout << b_rhs[i] ;
+		//std::cout << b_rhs[i] ;
 	}
 	
 
 }
 void Geometry::initialize_dynamic(){
 	for (int i = 0; i < numNodes*dim; i++){
-		u[i] = u_dot[i] = u_doubledot[i] = 0;
+		u[i] = u_dot[i] = u_doubledot[i] = u_doubledot_old[i]=0;
+	}
+
+}
+
+void Geometry::update_dynamic_vectors(){
+	
+	for (int i = 0; i < numNodes*dim; i++){
+		u[i] = u[i] + dt*u_dot[i] + (dt*dt / 2.0)*((1 - beta_2)*u_doubledot_old[i] + beta_2*u_doubledot[i]);
+		u_dot[i] = u_dot[i] + dt*((1 - beta_1)*u_doubledot_old[i] + beta_1*u_doubledot[i]);
 	}
 }
 
+void Geometry::update_dynamic_xyz(){
+	for (int i = 0; i < numNodes; i++) {
+		x[i] = x[i] + u[i * dim];
+		y[i] = y[i] + u[i * dim + 1];
+		
+
+	}
+}
 void Geometry::update_vector(){
 
 	double duration_K;
@@ -419,12 +438,12 @@ void Geometry::update_vector(){
 
 
 
-	for (int j = 0; j <10; j++){
+	/*for (int j = 0; j <10; j++){
 		for (int i = 0; i < 10; i++){
 			std::cout<< L[IDX2C(i, j, N)] << std::endl;
 		}
 		std::cout << std::endl;
-	}
+	}*/
 
 
 	// --- Create device array and copy host array to it
@@ -573,16 +592,15 @@ void Geometry::update_vector(){
 	for (int k = 0; k<20; k++) printf("xs[%i] = %f\n", k, x[k]);*/
 
 
-	for (int i = 0; i < numNodes; i++) {
-		u_doubledot[i] = u_doubledot[i] + h_x[i * dim];
-		u_doubledot[i] = u_doubledot[i] + h_x[i * dim + 1];
-		if (dim == 3){
-			z[i] = z[i] + h_x[i * dim + 2];
-		}
+	for (int i = 0; i < numNodes*dim; i++) {
+		u_doubledot_old[i] = u_doubledot[i];
+		u_doubledot[i] = u_doubledot[numNodes*dim] + h_x[i];
+	
+		
 
 	}
 
-	free(h_A);
+ 	free(h_A);
 	free(h_A_RowIndices);
 	free(h_A_ColIndices);
 	//free(h_x);
@@ -1305,7 +1323,7 @@ void Geometry::ApplyEssentialBoundaryConditionsBarycentric(int numP, int numBC, 
 }
 
 
-void Geometry::ApplySudoForcesBarycentric(int numP, int node_applied, int *localcoord, int *elemForce, double forceVec_x, double forceVec_y, double *f, int **nodesInElem, double thickness, double *x, double *y, int **displaceInElem){
+void Geometry::ApplySudoForcesBarycentric(int numP, int node_applied, int *localcoord, int *elemForce, double forceVec_x, double forceVec_y, double *g, int **nodesInElem, double thickness, double *x, double *y, int **displaceInElem){
 	int local; // used to store local coord info
 	int node_interest[2];// use two ints to tell us which 2 of the nodes in the element would be useful
 	int row, col;

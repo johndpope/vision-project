@@ -112,8 +112,10 @@ class Geometry{
 	float *b_rhs = NULL;
 	//float *device_b_rhs = NULL;
 	//double *u = NULL;
+
 	double *u_dot = NULL;
 	double *u_doubledot = NULL;
+	double *u_doubledot_old = NULL;
 	
 
 	//Memory used in cholesky factorization
@@ -185,7 +187,8 @@ public:
 	void update_vector(void);
 	void set_dynamic(bool tf){ dynamic = tf; };
 	bool get_dynamic(){ return dynamic; };
-
+	void update_dynamic_vectors(void);
+	void update_dynamic_xyz(void);
 	//Solver
 	void initialize_CUDA(void);
 	int tt(void);
