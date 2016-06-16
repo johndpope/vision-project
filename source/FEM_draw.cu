@@ -688,9 +688,9 @@ void drawMesh(Geometry *p){
 		}
 		else if (p->return_dim() == 2){
 			glBegin(GL_LINE_LOOP);
-			glVertex3f(p->return_x(node_considered1) * 400 - 200, p->return_y(node_considered1) * 400 - 200, p->return_z(node_considered1) * 400);
-			glVertex3f(p->return_x(node_considered2) * 400 - 200, p->return_y(node_considered2) * 400 - 200, p->return_z(node_considered2) * 400);
-			glVertex3f(p->return_x(node_considered3) * 400 - 200, p->return_y(node_considered3) * 400 - 200, p->return_z(node_considered3) * 400);
+			glVertex3f(p->return_x(node_considered1) * 200 - 200, p->return_y(node_considered1) * 200 - 200, p->return_z(node_considered1) * 200);
+			glVertex3f(p->return_x(node_considered2) * 200 - 200, p->return_y(node_considered2) * 200 - 200, p->return_z(node_considered2) * 200);
+			glVertex3f(p->return_x(node_considered3) * 200 - 200, p->return_y(node_considered3) * 200 - 200, p->return_z(node_considered3) * 200);
 			glEnd();
 		}
 		x_win = -(x * 400 - 400);
@@ -764,7 +764,7 @@ void drawMesh(Geometry *p){
 	glVertex3f(p->return_x(0) * 400 - 200, p->return_y(0) * 400 - 200, p->return_z(0)*400 );
 
 	glColor3f(0.0f, 1.0f, 1.6f);
-	glVertex3f(p->return_x(20) * 400 - 200, p->return_y(20) * 400 - 200, p->return_z(20) * 400);
+	glVertex3f(p->return_x(20) * 200 - 200, p->return_y(20) * 200 - 200, p->return_z(20) * 400);
 
 	glEnd();
 
@@ -820,65 +820,81 @@ int draw_things(Geometry *p)
 	double duration_K;
 	bool cuda_init = false;
 	int display_counter = 0;
-	for (;;){
+	if (!p->get_dynamic()){
+		for (;;){
 
 
-		
-		/* Timing */
-		t = glfwGetTime();
-		dt = t - t_old;
-		t_old = t;
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glPushMatrix();
-		glRotatef(rotate.x, 1.0, 0.0, 0.0);
-		glRotatef(rotate.y, 0.0, 100.0, 0.0);
-		glScalef(distance_change, distance_change, distance_change);
-		glTranslatef(translation.x, translation.y, translation.z);
-		/* Draw one frame */
-		//display();
-		//DrawGrid();
-		drawMesh(p);
-		glPopMatrix();
-		glFlush();
-		/* Swap buffers */
-		glfwSwapBuffers(window);
-		glfwPollEvents();
-		
+
+			/* Timing */
+			t = glfwGetTime();
+			dt = t - t_old;
+			t_old = t;
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glPushMatrix();
+			glRotatef(rotate.x, 1.0, 0.0, 0.0);
+			glRotatef(rotate.y, 0.0, 100.0, 0.0);
+			glScalef(distance_change, distance_change, distance_change);
+			glTranslatef(translation.x, translation.y, translation.z);
+			/* Draw one frame */
+			//display();
+			//DrawGrid();
+			drawMesh(p);
+			glPopMatrix();
+			glFlush();
+			/* Swap buffers */
+			glfwSwapBuffers(window);
+			glfwPollEvents();
 
 
-		//Solve the 2D FEM in each frame
-		p->setSudoNode(20);
-		p->setSudoForcex(1/6.0);
-		p->setSudoForcey(1/6.0);
-		if (p->return_dim() == 3){
-			p->Linear3DBarycentric_B_CUDA_host();
+
+			//Solve the 2D FEM in each frame
+			if (display_counter < 100){
+				p->setSudoNode(20);
+				p->setSudoForcex(100.0);
+				p->setSudoForcey(100.0);
+			}
+			else {
+				p->setSudoNode(20);
+				p->setSudoForcex(0);
+				p->setSudoForcey(0);
+			}
+
+
+			display_counter++;
+			if (p->return_dim() == 3){
+				p->Linear3DBarycentric_B_CUDA_host();
+			}
+
+
+			p->make_K_matrix();
+
+			//p->make_surface_f();
+
+
+
+			if (!cuda_init){
+				p->initialize_CUDA();
+
+				cuda_init = true;
+			}
+			std::clock_t start_K;
+			start_K = std::clock();
+			p->tt();
+			duration_K = (std::clock() - start_K) / (double)CLOCKS_PER_SEC;
+
+
+			//std::cout << " change status : " << changeNode << std::endl;
+
+			std::cout << "Solver time ms:  " << duration_K << std::endl;
+			//std::cout << " closet node : " << closest_Node << std::endl;
+			t++;
+			/* Check if we are still running */
+			if (glfwWindowShouldClose(window))
+				break;
 		}
-		
-		
-		p->make_K_matrix();
+	}
+	else{
 
-		//p->make_surface_f();
-		
-		
-
-		if (!cuda_init){
-			p->initialize_CUDA();
-			cuda_init = true;
-		}
-		std::clock_t start_K;
-		start_K = std::clock();
-		p->tt();
-		duration_K = (std::clock() - start_K) / (double)CLOCKS_PER_SEC;
-
-
-		//std::cout << " change status : " << changeNode << std::endl;
-
-		std::cout << "Solver time ms:  " << duration_K << std::endl;
-		//std::cout << " closet node : " << closest_Node << std::endl;
-		t++;
-		/* Check if we are still running */
-		if (glfwWindowShouldClose(window))
-			break;
 	}
 
 	glfwTerminate();

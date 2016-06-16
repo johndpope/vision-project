@@ -48,6 +48,7 @@ class Geometry{
 	int *nodesInElem_host = NULL;
 	int *nodesInElem_device = NULL;
 	double ***E = NULL;					// Array of local element stiffness matrices
+	double ***M = NULL;
 	double *E_vector_host = NULL;// local elements in array form
 	double *E_vector_device = NULL;
 	int **displaceInElem=NULL;
@@ -67,7 +68,7 @@ class Geometry{
 	double *K_vector_form = NULL;
 	double *u = NULL;
 	double *f = NULL;
-	double **M = NULL;
+	//double **M = NULL;
 	
 	//For mouse movement's sudo force
 	double sudo_node_force;
@@ -83,6 +84,7 @@ class Geometry{
 	cusparseMatDescr_t descrA;
 	cusparseMatDescr_t      descr_L = 0;
 	float *h_A_dense;
+	double *h_M_dense;
 	
 	float *d_A_dense;
 	double *d_A_dense_double; 
@@ -100,6 +102,19 @@ class Geometry{
 	int *d_A_RowIndices;
 	int *d_A_ColIndices;
 
+	//------Implicit variables
+	bool dynamic;
+	double beta_1;
+	double beta_2;
+	double dt;
+	float *L = NULL;
+	float *device_L = NULL;
+	float *b_rhs = NULL;
+	//float *device_b_rhs = NULL;
+	//double *u = NULL;
+	double *u_dot = NULL;
+	double *u_doubledot = NULL;
+	
 
 	//Memory used in cholesky factorization
 	csric02Info_t info_A = 0; 
@@ -132,8 +147,8 @@ public:
 	void Linear2DBarycentric_B(int *nodes, double *x, double *y, double **term);
 	double Linear2DJacobianDet_Barycentric(int *nodes, double *x, double *y);
 	void Linear2DBarycentric_D(double **term, double nu, double youngE);
-	void AssembleLocalElementMatrixBarycentric2D(int *nodes, double *x, double *y, int dimension, double **E, double nu, double youngE, double thickness);
-	void AssembleGlobalElementMatrixBarycentric(int numP, int numE, int nodesPerElem, int **elem, double ***E, float *K, int **displaceInElem);
+	void AssembleLocalElementMatrixBarycentric2D(int *nodes, double *x, double *y, int dimension, double **E,double **M, double nu, double youngE, double thickness);
+	void AssembleGlobalElementMatrixBarycentric(int numP, int numE, int nodesPerElem, int **elem, double ***E,double ***M, float *K,double *global_M, int **displaceInElem);
 	
 	//*******************3D***************
 	
@@ -160,6 +175,16 @@ public:
 	void setSudoForcex(double x_force){ sudo_force_x = x_force; };
 	void setSudoForcey(double y_force){ sudo_force_y = y_force; };
 
+	//------------Dynamic problem ---------//
+	void set_dt(double DT){ dt = DT; };
+	void set_beta1(double b1){ beta_1 = b1; };
+	void set_beta2(double b2){ beta_2 = b2; };
+	
+	void find_b(void);
+	void initialize_dynamic(void);
+	void update_vector(void);
+	void set_dynamic(bool tf){ dynamic = tf; };
+	bool get_dynamic(){ return dynamic; };
 
 	//Solver
 	void initialize_CUDA(void);
