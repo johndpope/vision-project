@@ -28,8 +28,8 @@ int main(void){
 	testing_geo.set_thickness(5);
 	testing_geo.initilizeMatrices();
 	testing_geo.initialize_CUDA();
-	testing_geo.set_dynamic(false);
-	kinect_main(0, NULL,&testing_geo);
+	testing_geo.set_dynamic(true);
+	//kinect_main(0, NULL,&testing_geo);
 	
 	 ///maain(0, NULL);
 	

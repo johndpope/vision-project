@@ -820,6 +820,9 @@ int draw_things(Geometry *p)
 	double duration_K;
 	bool cuda_init = false;
 	int display_counter = 0;
+	//initilizing all of the vectors
+	p->initialize_dynamic();
+	
 	if (!p->get_dynamic()){
 		for (;;){
 
@@ -894,7 +897,9 @@ int draw_things(Geometry *p)
 		}
 	}
 	else{
-
+		for (;;){
+			p->find_b();
+		}
 	}
 
 	glfwTerminate();

@@ -356,7 +356,7 @@ void Geometry::AssembleGlobalElementMatrixBarycentric(int numP, int numE, int no
 
 				K[IDX2C(DOF[c], DOF[r], numP)] = K[IDX2C(DOF[c], DOF[r], numP)] + E[k][r][c];
 				global_M[IDX2C(DOF[c], DOF[r], numP)] = global_M[IDX2C(DOF[c], DOF[r], numP)] + M[k][r][c];
-				L[IDX2C(DOF[c], DOF[r], numP)] = (dt*dt / 2.0)*K[IDX2C(DOF[c], DOF[r], numP)] + global_M[IDX2C(DOF[c], DOF[r], numP)];
+				L[IDX2C(DOF[c], DOF[r], numP)] = (dt*dt*beta_2 / 2.0)*K[IDX2C(DOF[c], DOF[r], numP)] + global_M[IDX2C(DOF[c], DOF[r], numP)];
 				//K[IDX2C(DOF[r], DOF[c], numP*dim)] = K[IDX2C(DOF[r], DOF[c], numP*dim)] + E[k][r][c];
 			}
 		}
@@ -374,12 +374,21 @@ void Geometry::AssembleGlobalElementMatrixBarycentric(int numP, int numE, int no
 void Geometry::find_b(){
 	int du = numNodes*dim;
 	double use_number;
+	double dummy_row;
+	//I am going to apply a forcef only at the initial time step, and then will be zero.
+	this->ApplySudoForcesBarycentric(numNodes*dim, 10, localcoordForce, elemForce, 10, 10, f, nodesInElem, thickness, x, y, displaceInElem);
 	for (int i = 0; i < numNodes*dim; i++){
+		use_number = 0;
 		for (int j = 0; j < numNodes*dim; j++){
-			use_number = u[j] + dt*u_dot[j] + (dt*dt / 2.0)*(1 - beta_2)*u_doubledot[j];
-			b_rhs[i] = b_rhs[i] - h_A_dense[IDX2C(i, j, du)] * use_number;
+			dummy_row = 0;
+			dummy_row = dt*u_dot[j] + (dt*dt / 2.0)*(1 - beta_2)*u_doubledot[j];
+			use_number = use_number + h_A_dense[IDX2C(i, j, du)] * dummy_row;
 		}
+		b_rhs[i] = f[i] - use_number;
+		std::cout << b_rhs[i] ;
 	}
+	
+
 }
 void Geometry::initialize_dynamic(){
 	for (int i = 0; i < numNodes*dim; i++){
