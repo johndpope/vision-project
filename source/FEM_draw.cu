@@ -822,8 +822,8 @@ int draw_things(Geometry *p)
 	int display_counter = 0;
 	//initilizing all of the vectors
 	p->initialize_dynamic();
-	p->set_beta1(0.5);
-	p->set_beta2(0.5);
+	p->set_beta1(0.8);
+	p->set_beta2(0.2);
 	p->set_dt(0.01);
 	
 	if (!p->get_dynamic()){
