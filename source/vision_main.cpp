@@ -153,6 +153,7 @@ DepthSpacePoint depthSpace2[colorwidth*colorheight];
 cuda::GpuMat input_gpu;
 cuda::GpuMat output_gpu;
 Mat output;
+int display_counter;
 void Threshold_Demo(int, void*)
 {
 	/* 0: Binary
@@ -230,24 +231,40 @@ void getDepthData(IMultiSourceFrame* frame, GLubyte* dest) {
 void get_mesh(Geometry *p){
 	int e = global_geo.return_numElems();
 	// global_geo.return_numElems()
+	if (display_counter < 1){
+		p->setSudoNode(100);
+		p->setSudoForcex(100.0);
+		p->setSudoForcey(0.0);
+	}
+	else {
+		p->setSudoNode(20);
+		p->setSudoForcex(0);
+		p->setSudoForcey(0);
+	}
+	/*if (display_counter == 500){
 	p->setSudoNode(20);
-	p->setSudoForcex(1 / 6.0);
-	p->setSudoForcey(1 / 6.0);
+	p->setSudoForcex(-100);
+	p->setSudoForcey(-100);
+	}*/
+	display_counter++;
 	if (!cuda_init){
 		p->initialize_CUDA();
 		cuda_init = true;
 	}
 	p->make_K_matrix();
-	p->tt();
+	p->find_b();
+	p->update_vector();
+	p->update_dynamic_vectors();
+	p->update_dynamic_xyz();
 	mesh_geometry.empty();
 	for (int i = 0; i <global_geo.return_numNodes(); i++){
 
 		//double dx = (geo_deform[1].x-geo_deform[0].x );
 		if (first_geo_init == true){
-			mesh_geometry.push_back(Point3f(((p->return_x(i) - 5.0f)) / 5.0, (p->return_y(i) - 5.0f) /5.0, 0));
+			mesh_geometry.push_back(Point3f(((p->return_x(i))) / 3.0, (p->return_y(i)) / 3.0, 0));
 		}
 		else {
-			mesh_geometry[i] = (Point3f(((p->return_x(i) - 5.0f)) / 5.0, (p->return_y(i) - 5.0f) /5.0, 0));
+			mesh_geometry[i] = (Point3f(((p->return_x(i))) / 3.0, (p->return_y(i)) / 3.0, 0));
 		}
 		
 		
@@ -297,10 +314,10 @@ void draw_mesh(Geometry *p){
 
 
 
-		circle(I, mesh_geometry_display[node_considered1], 150 / 32.0, Scalar(200, 0, 80), -1, 1);
-		circle(I, mesh_geometry_display[node_considered2], 150 / 32.0, Scalar(200, 0, 80), -1, 1);
-		circle(I, mesh_geometry_display[node_considered3], 150 / 32.0, Scalar(200, 0, 80), -1, 1);
-		putText(I, to_string(node_considered3), mesh_geometry_display[node_considered3], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+		circle(I, mesh_geometry_display[node_considered1], 100 / 32.0, Scalar(200, 100, 80), -1, 1);
+		circle(I, mesh_geometry_display[node_considered2], 100 / 32.0, Scalar(200,100, 80), -1, 1);
+		circle(I, mesh_geometry_display[node_considered3], 100 / 32.0, Scalar(200, 100, 80), -1, 1);
+		putText(I, to_string(node_considered1), mesh_geometry_display[node_considered1], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
 		double dx = (geo_deform[1].x - geo_deform[0].x);
 		string ss = "dx : " + to_string(dx);
 		putText(I, (ss), Point2f(50.0,50.0), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
@@ -914,6 +931,7 @@ void drawKinectData() {
 }
 
 int kinect_main(int argc, char* argv[], Geometry *p) {
+	cout << "settping up kinect and camera" << endl;
 	//Reading in the matrix and distortion_coefficients
 	string filename = "camera.yml";
 	global_geo = *p;
@@ -1002,20 +1020,32 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 	gluLookAt(0, 0, 0, 0, 0, 1, 0, 1, 0);
 	const char **a;
 	
-	Geometry testing_geo;
+	/*Geometry testing_geo;
 	testing_geo.set_dim(3);
 	testing_geo.read_nodes();
 	testing_geo.read_elem();
 	testing_geo.read_force();
 	testing_geo.set_YoungPoisson(20000, 0.45);
-	testing_geo.set_thickness(5);
+	testing_geo.set_thickness(5);*/
 		
 		tracking_colors.push_back(Point2f(0.0, 0.0));
 	tracking_colors.push_back(Point2f(0.0, 0.0));
 	tracking_colors.push_back(Point2f(0.0, 0.0));
 
 	tracking_colors.push_back(Point2f(0.0, 0.0));
+
+	if (global_geo.get_dynamic() == true){
+		global_geo.initialize_dynamic();
 	
+		global_geo.set_beta1(0.9); // if beta_2 >= beta1 and beta > 1/2 then the time stepping scheme is unconditionally stable.
+		global_geo.set_beta2(0.9);
+		global_geo.set_dt(1.0);
+		global_geo.set_dynamic_alpha(0.0023);
+		global_geo.set_dynamic_xi(0.0023);
+		
+	}
+	//global_geo.initialize_CUDA
+	display_counter = 0;
 	first_geo_init = true;
 	get_mesh(&global_geo);
 

@@ -687,11 +687,21 @@ void drawMesh(Geometry *p){
 			glEnd();
 		}
 		else if (p->return_dim() == 2){
+			glColor4f(x/5 , y/5 , (float)i / numElem, 0.5);
+			//glColor3f(1.0, 0.0, 1.0);
+			glPolygonMode(GL_FRONT_AND_BACK, GL_TRIANGLES);
+			glBegin(GL_TRIANGLES);
+			glVertex3f(p->return_x(node_considered1) * 200 - 200, p->return_y(node_considered1) * 200 - 200, p->return_z(node_considered1) * 200);       /* NE */
+			glVertex3f(p->return_x(node_considered2) * 200 - 200, p->return_y(node_considered2) * 200 - 200, p->return_z(node_considered2) * 200);       /* NE */
+			glVertex3f(p->return_x(node_considered3) * 200 - 200, p->return_y(node_considered3) * 200 - 200, p->return_z(node_considered3) * 200);       /* NE */
+			glColor3f(1.0, 0.0, 1.0);
+			glEnd();
 			glBegin(GL_LINE_LOOP);
 			glVertex3f(p->return_x(node_considered1) * 200 - 200, p->return_y(node_considered1) * 200 - 200, p->return_z(node_considered1) * 200);
 			glVertex3f(p->return_x(node_considered2) * 200 - 200, p->return_y(node_considered2) * 200 - 200, p->return_z(node_considered2) * 200);
 			glVertex3f(p->return_x(node_considered3) * 200 - 200, p->return_y(node_considered3) * 200 - 200, p->return_z(node_considered3) * 200);
 			glEnd();
+			
 		}
 		x_win = -(x * 400 - 400);
 			y_win = y * 400;
@@ -822,10 +832,11 @@ int draw_things(Geometry *p)
 	int display_counter = 0;
 	//initilizing all of the vectors
 	p->initialize_dynamic();
-	p->set_beta1(0.8);
-	p->set_beta2(0.2);
-	p->set_dt(0.01);
-	
+	p->set_beta1(0.9); // if beta_2 >= beta1 and beta > 1/2 then the time stepping scheme is unconditionally stable.
+	p->set_beta2(0.9);
+	p->set_dt(1.3);
+	p->set_dynamic_alpha(0.002);
+	p->set_dynamic_xi(0.0023);
 	if (!p->get_dynamic()){
 		for (;;){
 
@@ -856,8 +867,8 @@ int draw_things(Geometry *p)
 			//Solve the 2D FEM in each frame
 			if (display_counter < 100){
 				p->setSudoNode(20);
-				p->setSudoForcex(20.0);
-				p->setSudoForcey(20.0);
+				p->setSudoForcex(100.0);
+				p->setSudoForcey(100.0);
 			}
 			else {
 				p->setSudoNode(20);
@@ -901,21 +912,21 @@ int draw_things(Geometry *p)
 	}
 	else{
 		for (;;){
-			if (display_counter < 2){
-				p->setSudoNode(20);
-				p->setSudoForcex(100);
-				p->setSudoForcey(100);
+			if (display_counter < 1){
+				p->setSudoNode(100);
+				p->setSudoForcex(10);
+				p->setSudoForcey(10);
 			}
 			else {
 				p->setSudoNode(20);
 				p->setSudoForcex(0);
 				p->setSudoForcey(0);
 			}
-			if (display_counter == 500){
+			/*if (display_counter == 500){
 				p->setSudoNode(20);
 				p->setSudoForcex(-100);
 				p->setSudoForcey(-100);
-			}
+			}*/
 			display_counter++;
 			t = glfwGetTime();
 			dt = t - t_old;

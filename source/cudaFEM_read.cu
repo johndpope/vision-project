@@ -311,6 +311,10 @@ void Geometry::make_K_matrix(){
 	double duration_K_global = (std::clock() - start_K_global) / (double)CLOCKS_PER_SEC;
 	//ApplyEssentialBoundaryConditionsBarycentric(numNodes*dim, numForceBC, localcoordForce, elemForce, forceVec_x, forceVec_y, f, K, nodesInElem, thickness, x, y, displaceInElem);
 	ApplySudoForcesBarycentric(numNodes*dim, sudo_node_force, localcoordForce, elemForce, sudo_force_x, sudo_force_y, f, nodesInElem, thickness, x, y, displaceInElem);
+	
+	/*for (int i = 0; i < numNodes*dim; i++){
+		std::cout << f[i] << std::endl;
+	}*/
 	std::cout << "FPS time local K matrix: " << duration_K_local << std::endl;
 	std::cout << "FPS time global K matrix: " << duration_K_global << std::endl;
 	//std::cout << "sudo force x: " << sudo_force_x << " sudo_force y: " << sudo_force_y << std::endl;
@@ -357,7 +361,7 @@ void Geometry::AssembleGlobalElementMatrixBarycentric(int numP, int numE, int no
 
 				K[IDX2C(DOF[c], DOF[r], numP)] = K[IDX2C(DOF[c], DOF[r], numP)] + E[k][r][c];
 				global_M[IDX2C(DOF[c], DOF[r], numP)] = global_M[IDX2C(DOF[c], DOF[r], numP)] + M[k][r][c];
-				L[IDX2C(DOF[c], DOF[r], numP)] = (dt*dt*beta_2 / 2.0)*K[IDX2C(DOF[c], DOF[r], numP)] + global_M[IDX2C(DOF[c], DOF[r], numP)];
+				L[IDX2C(DOF[c], DOF[r], numP)] = (dt*c_xi*beta_1+dt*dt*beta_2 / 2.0)*K[IDX2C(DOF[c], DOF[r], numP)] + (1+dt*beta_1*c_alpha)*global_M[IDX2C(DOF[c], DOF[r], numP)]; //
 				//K[IDX2C(DOF[r], DOF[c], numP*dim)] = K[IDX2C(DOF[r], DOF[c], numP*dim)] + E[k][r][c];
 			}
 		}
@@ -376,6 +380,7 @@ void Geometry::find_b(){
 	int du = numNodes*dim;
 	double use_number;
 	double dummy_row;
+	double dummy_row1;
 	//I am going to apply a forcef only at the initial time step, and then will be zero.
 	
 	
@@ -383,8 +388,10 @@ void Geometry::find_b(){
 		use_number = 0;
 		for (int j = 0; j < numNodes*dim; j++){
 			dummy_row = 0;
-			dummy_row = dt*u_dot[j] + (dt*dt / 2.0)*(1 - beta_2)*u_doubledot[j];
-			use_number = use_number + h_A_dense[IDX2C(i, j, du)] * dummy_row;
+			dummy_row1 = 0;
+			dummy_row = u[j] + dt*u_dot[j] + (dt*dt / 2.0)*(1 - beta_2)*u_doubledot[j];
+			dummy_row1 = u_dot[j] + dt*(1 - beta_1)*u_doubledot[j];
+			use_number = use_number + h_A_dense[IDX2C(i, j, du)] * dummy_row + (h_A_dense[IDX2C(i, j, du)] * c_xi + h_M_dense[IDX2C(i, j, du)]*c_alpha)*dummy_row1;
 		}
 		b_rhs[i] = f[i] - use_number;
 		//std::cout << b_rhs[i] ;
@@ -392,9 +399,16 @@ void Geometry::find_b(){
 	
 
 }
+
+//initializing the dynamic array 
+void Geometry::initialize_zerovector(int numberofpoints){
+	numNonZero = numberofpoints;
+	vector_zero_nodes = new int[numberofpoints];
+}
 void Geometry::initialize_dynamic(){
+
 	for (int i = 0; i < numNodes*dim; i++){
-		u[i] = u_dot[i] = u_doubledot[i] = u_doubledot_old[i]=0;
+		u[i] = u_dot[i] = u_doubledot[i] = u_doubledot_old[i]=0.0;
 	}
 
 }
@@ -415,7 +429,7 @@ void Geometry::update_dynamic_xyz(){
 
 	}
 }
-void Geometry::update_vector(){
+void Geometry::update_vector(){ //solve Ax=b for the dynamics case
 
 	double duration_K;
 
@@ -425,12 +439,17 @@ void Geometry::update_vector(){
 
 		L[IDX2C(col, 0, N)] = 0;
 		L[IDX2C(col, 1, N)] = 0;
+		L[IDX2C(col,2, N)] = 0;
+		L[IDX2C(col, 3, N)] = 0;
+
 		if (dim == 3){
 			L[IDX2C(col, 2, N)] = 0;
 		}
 	}
 	L[IDX2C(0, 0, N)] = 1.0;
 	L[IDX2C(1, 1, N)] = 1.0;
+	L[IDX2C(2, 2, N)] = 1.0;
+	L[IDX2C(3, 3, N)] = 1.0;
 	if (dim == 3){
 		L[IDX2C(2, 2, N)] = 1.0;
 	}
@@ -492,7 +511,7 @@ void Geometry::update_vector(){
 	*/
 	// --- Allocating and defining dense host and device data vectors
 
-	float *h_x = (float *)malloc(Nrows * sizeof(float));
+	
 	/*h_x[0] = 100.0;  h_x[1] = 200.0; h_x[2] = 400.0; h_x[3] = 500.0;*/
 	for (int i = 0; i < N; i++){
 		h_x[i] = b_rhs[i];
@@ -502,6 +521,7 @@ void Geometry::update_vector(){
 	}
 	else {
 		h_x[0] = h_x[1] = 0;
+		h_x[2] = h_x[3] = 0;
 	}
 
 	float *d_x;        gpuErrchk(cudaMalloc(&d_x, Nrows * sizeof(float)));
@@ -1364,6 +1384,10 @@ void Geometry::ApplySudoForcesBarycentric(int numP, int node_applied, int *local
 
 
 }
+
+void Geometry::set_zero_nodes(void){
+
+}
 void Geometry::initialize_CUDA(void){
 	Nrows = numNodes*dim;                        // --- Number of rows
 	Ncols = numNodes*dim;                        // --- Number of columns
@@ -1394,7 +1418,10 @@ void Geometry::initialize_CUDA(void){
 	cusparseSafeCall(cusparseCreateCsric02Info(&info_A));
 	cusparseSafeCall(cusparseCreateCsrsv2Info(&info_L));
 	cusparseSafeCall(cusparseCreateCsrsv2Info(&info_Lt));
+	h_x = (float *)malloc(Nrows * sizeof(float));
 }
+
+
 int Geometry::tt()
 {
 	// --- Initialize cuSPARSE

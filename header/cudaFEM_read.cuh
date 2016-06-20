@@ -96,6 +96,8 @@ class Geometry{
 	int nnz;
 	int lda;
 
+	float *h_x;
+
 
 	//device side dense matrix
 	float *d_A;
@@ -116,6 +118,10 @@ class Geometry{
 	double *u_dot = NULL;
 	double *u_doubledot = NULL;
 	double *u_doubledot_old = NULL;
+
+	//for capacitance matrix parameters
+	double c_alpha = 0;
+	double c_xi = 0;
 	
 
 	//Memory used in cholesky factorization
@@ -123,6 +129,9 @@ class Geometry{
 	csrsv2Info_t  info_L = 0;  
 	csrsv2Info_t  info_Lt = 0; 
 	
+	//set dirichlet conditions
+	int *vector_zero_nodes = NULL;
+	int numNonZero;
 public:
 	Geometry();
 	~Geometry();
@@ -189,9 +198,15 @@ public:
 	bool get_dynamic(){ return dynamic; };
 	void update_dynamic_vectors(void);
 	void update_dynamic_xyz(void);
+	void set_dynamic_alpha(double alpha){ c_alpha = alpha; };
+	void set_dynamic_xi(double xi){ c_xi = xi; };
 	//Solver
 	void initialize_CUDA(void);
 	int tt(void);
+
+	//setting boundary condition
+	void initialize_zerovector(int numberofelements); // Initializing an array with all of the non moving nodes
+	void set_zero_nodes(void); // Set the nodes that will not move, this will be done to the LHS and RHIS of the system of equations Ax = b;
 
 	
 };
