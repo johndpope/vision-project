@@ -31,7 +31,7 @@ int main(void){
 	testing_geo.set_dynamic(true);
     kinect_main(0, NULL,&testing_geo);
 	
-	 ///maain(0, NULL);
+	 //maain(0, NULL);
 	
 
 	

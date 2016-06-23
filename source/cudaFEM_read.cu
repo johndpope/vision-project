@@ -22,7 +22,7 @@
 #include <ctime>
 #include "cuda_functions.cuh"
 #define max(a,b) ((a) > (b) ? (a) : (b))
-#define IDX2C(i,j,ld) (((j)*(ld))+( i )) 
+#define IDX2C(i,j,ld) (((j)*(ld))+( i )) //first entry is columns and second entry is rows.
 #define threeD21D(row_d,col_d,el_d,width_d,depth_d) (row_d+width_d*(col_d+depth_d*el_d))
 #define nodesinelemX(node,el,nodesPerElem) (node + nodesPerElem*el)
 #define nodesDisplacementX(dof,node,dimension) (dof + node*dimension)
@@ -130,16 +130,16 @@ void Geometry::read_nodes(){
 void Geometry::read_elem(){
 
 	std::ifstream in_elem("FEM_Elem.txt");
-
+	std::cout << "Reading in element files" << std::endl;
 	if (!in_elem){
 		std::cout << "cannot open Element file \n";
 	}
-
-	in_elem >> numE >> numNodesPerElem;
-
+	int a;
+	in_elem >>numE >> numNodesPerElem;
+	
 	//Allocating E matrix 3x3x3 matrix
 	E = new double**[numE];
-	M = new double**[numE];
+ 	M = new double**[numE];
 	nodesInElem = new int*[numE];
 	nodesInElem_host = new int[numE*numNodesPerElem];
 	nodesInElem_device = new int[numE*numNodesPerElem];
@@ -229,15 +229,18 @@ void Geometry::read_force(){
 	if (!in_matrix){
 		std::cout << "cannot open force file \n";
 	}
-	in_matrix >> numForceBC;
-	elemForce = new int[numForceBC];
-	localcoordForce = new int[numForceBC];
-	forceVec_x = new double[numForceBC];
-	forceVec_y = new double[numForceBC];
-	for (int i = 0; i < numForceBC; i++){
-		in_matrix >> elemForce[i] >> localcoordForce[i] >> forceVec_x[i] >> forceVec_y[i];
-	}
+	else{
+		in_matrix >> numForceBC;
+		elemForce = new int[numForceBC];
+		localcoordForce = new int[numForceBC];
+		forceVec_x = new double[numForceBC];
+		forceVec_y = new double[numForceBC];
+		for (int i = 0; i < numForceBC; i++){
+			in_matrix >> elemForce[i] >> localcoordForce[i] >> forceVec_x[i] >> forceVec_y[i];
+		}
 
+	}
+	
 	in_matrix.close();
 
 
@@ -282,9 +285,9 @@ void Geometry::initilizeMatrices(){
 	}
 }
 void Geometry::make_K_matrix(){
-	std::clock_t start_K_local;
+	std::clock_t start_K_local1;
 	std::clock_t start_K_global;
-	start_K_local = std::clock();
+	start_K_local1 = std::clock();
 	bool cuda_use = false;
 	if (cuda_use){
 		Linear3DBarycentric_B_CUDA_host();
@@ -304,7 +307,7 @@ void Geometry::make_K_matrix(){
 		}
 	}
 	start_K_global = std::clock();
-	double duration_K_local = (std::clock() - start_K_local) / (double)CLOCKS_PER_SEC;
+	double duration_K_local = (std::clock() - start_K_local1) / (double)CLOCKS_PER_SEC;
 	
 	if (!cuda_use)
 		AssembleGlobalElementMatrixBarycentric(numNodes*dim, numE, numNodesPerElem, nodesInElem, E, M, h_A_dense, h_M_dense, displaceInElem);
@@ -315,8 +318,8 @@ void Geometry::make_K_matrix(){
 	/*for (int i = 0; i < numNodes*dim; i++){
 		std::cout << f[i] << std::endl;
 	}*/
-	std::cout << "FPS time local K matrix: " << duration_K_local << std::endl;
-	std::cout << "FPS time global K matrix: " << duration_K_global << std::endl;
+	//std::cout << "FPS time local K matrix: " << duration_K_local << std::endl;
+	//std::cout << "FPS time global K matrix: " << duration_K_global << std::endl;
 	//std::cout << "sudo force x: " << sudo_force_x << " sudo_force y: " << sudo_force_y << std::endl;
 }
 
@@ -402,7 +405,7 @@ void Geometry::find_b(){
 
 //initializing the dynamic array 
 void Geometry::initialize_zerovector(int numberofpoints){
-	numNonZero = numberofpoints;
+	numNodesZero = numberofpoints;
 	vector_zero_nodes = new int[numberofpoints];
 }
 void Geometry::initialize_dynamic(){
@@ -433,8 +436,8 @@ void Geometry::update_vector(){ //solve Ax=b for the dynamics case
 
 	double duration_K;
 
-
-	
+	this->set_zero_AxB();
+	/*
 	for (int col = 0; col < Ncols; col++){
 
 		L[IDX2C(col, 0, N)] = 0;
@@ -453,7 +456,7 @@ void Geometry::update_vector(){ //solve Ax=b for the dynamics case
 	if (dim == 3){
 		L[IDX2C(2, 2, N)] = 1.0;
 	}
-
+*/
 
 
 
@@ -511,18 +514,18 @@ void Geometry::update_vector(){ //solve Ax=b for the dynamics case
 	*/
 	// --- Allocating and defining dense host and device data vectors
 
-	
+	float *h_x = (float *)malloc(Nrows * sizeof(float));
 	/*h_x[0] = 100.0;  h_x[1] = 200.0; h_x[2] = 400.0; h_x[3] = 500.0;*/
 	for (int i = 0; i < N; i++){
 		h_x[i] = b_rhs[i];
 	}
-	if (dim == 3){
+	/*if (dim == 3){
 		h_x[0] = h_x[1] = h_x[2] = 0;
 	}
 	else {
 		h_x[0] = h_x[1] = 0;
 		h_x[2] = h_x[3] = 0;
-	}
+	}*/
 
 	float *d_x;        gpuErrchk(cudaMalloc(&d_x, Nrows * sizeof(float)));
 	gpuErrchk(cudaMemcpy(d_x, h_x, Nrows * sizeof(float), cudaMemcpyHostToDevice));
@@ -1385,9 +1388,34 @@ void Geometry::ApplySudoForcesBarycentric(int numP, int node_applied, int *local
 
 }
 
-void Geometry::set_zero_nodes(void){
+void Geometry::set_zero_nodes(int *points){
+	//We have to make the corresponding L matrix and rhs vectors set to the correct values.
+
+
+	for (int i = 0; i < numNodesZero; i++){
+		vector_zero_nodes[i] = points[i];
+	}
+
 
 }
+
+void Geometry::set_zero_AxB(void){
+
+	for (int i = 0; i < numNodesZero; i++){
+		int row1 = displaceInElem[i][0];
+		int row2 = displaceInElem[i][1];
+		for (int col = 0; col < Ncols; col++){
+			
+			L[IDX2C(col, row1, N)] = 0;
+			L[IDX2C(col, row2, N)] = 0;
+
+		}
+		L[IDX2C(row1, row1, N)] = 1.0;
+		L[IDX2C(row2, row2, N)] = 1.0;
+		b_rhs[row1] = b_rhs[row2] = 0.0;
+	}
+}
+
 void Geometry::initialize_CUDA(void){
 	Nrows = numNodes*dim;                        // --- Number of rows
 	Ncols = numNodes*dim;                        // --- Number of columns
@@ -1418,7 +1446,7 @@ void Geometry::initialize_CUDA(void){
 	cusparseSafeCall(cusparseCreateCsric02Info(&info_A));
 	cusparseSafeCall(cusparseCreateCsrsv2Info(&info_L));
 	cusparseSafeCall(cusparseCreateCsrsv2Info(&info_Lt));
-	h_x = (float *)malloc(Nrows * sizeof(float));
+	
 }
 
 

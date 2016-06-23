@@ -837,6 +837,15 @@ int draw_things(Geometry *p)
 	p->set_dt(1.3);
 	p->set_dynamic_alpha(0.002);
 	p->set_dynamic_xi(0.0023);
+	p->initialize_zerovector(9);
+	//next we set what nodes we want to make stable
+	int points[9];
+	for (int i = 0; i < 9; i++){
+		points[i] = i;
+
+	}
+
+	p->set_zero_nodes(points);
 	if (!p->get_dynamic()){
 		for (;;){
 

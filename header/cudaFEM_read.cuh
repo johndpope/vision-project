@@ -96,7 +96,7 @@ class Geometry{
 	int nnz;
 	int lda;
 
-	float *h_x;
+	//float *h_x = NULL;
 
 
 	//device side dense matrix
@@ -131,7 +131,7 @@ class Geometry{
 	
 	//set dirichlet conditions
 	int *vector_zero_nodes = NULL;
-	int numNonZero;
+	int numNodesZero;
 public:
 	Geometry();
 	~Geometry();
@@ -206,8 +206,8 @@ public:
 
 	//setting boundary condition
 	void initialize_zerovector(int numberofelements); // Initializing an array with all of the non moving nodes
-	void set_zero_nodes(void); // Set the nodes that will not move, this will be done to the LHS and RHIS of the system of equations Ax = b;
-
+	void set_zero_nodes(int *); // Set the nodes that will not move, this will be done to the LHS and RHIS of the system of equations Ax = b;
+	void set_zero_AxB(void);
 	
 };
 
