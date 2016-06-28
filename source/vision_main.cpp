@@ -534,23 +534,34 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 					aruco_center.push_back(Point2f(x_ave / 4.0, y_ave / 4.0));
 
 				}
+
 				double c_x = instrinsics.at<double>(2);
 				double f_x = instrinsics.at<double>(0);
 				double c_y = instrinsics.at<double>(5);
 				double f_y = instrinsics.at<double>(4);
+				if (0){
+					cout << "cx: " << c_x << endl;
+					cout << "fx: " << f_x << endl;
+					cout << "cy: " << c_y << endl;
+					cout << "fy: " << f_y << endl;
+				}
 				string outputmesg;
+				string outputcoord;
+				std::ofstream in_disp(to_string(write_counter) + "aruco_center.txt");
 				for (unsigned int i = 0; i < markerIds.size(); i++){
-					int index3 = aruco_center[i].y*colorwidth + aruco_center[i].x;
+					int index3 = ((int)aruco_center[i].y)*colorwidth + (int)aruco_center[i].x;
 					ColorSpacePoint dummycolor;
 
 					int _X = (int)depthSpace2[index3].X;
 					int _Y = (int)depthSpace2[index3].Y;
+					// _X = (int)(aruco_center[i].x*static_cast<double>(width)/colorwidth);
+					// _Y = (int)(aruco_center[i].y*static_cast<double>(height) / colorheight);
 					double actualx;
 					double actualy;
 					double actualz;
 					if ((_X >= 0) && (_X < width) && (_Y >= 0) && (_Y < height)){
 						int depth_index = (_Y*width) + _X;
-						int index3_color = index3 * 4;
+						
 						/*CameraSpacePoint q = depth2xyz[depth_index]*/
 						ColorSpacePoint p = depth2rgb[depth_index];
 						CameraSpacePoint world_point_camera = depth2xyz[depth_index];
@@ -558,11 +569,23 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 						actualx = (p.X - c_x)*world_point_camera.Z / f_x;
 						actualy = (p.Y - c_y)*world_point_camera.Z / f_y;
 						actualz = world_point_camera.Z;
-						outputmesg = "ID: " + to_string(markerIds[i]) + " Pos: " + to_string(actualx) + " " + to_string(actualy) + " " + to_string(actualz);
-						putText(I, outputmesg, Point((int)aruco_center[i].x + 5, (int)aruco_center[i].y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255, 0, 0), 2.0);
+						//if (actualz >= INFINITE)break;
+
+
+			
+							in_disp << markerIds[i] << " " << actualx << " " << actualy << " " << actualz << endl;
+							outputmesg = to_string(markerIds[i]);// +" Pos: " + to_string(actualx) + " " + to_string(actualy) + " " + to_string(actualz);
+							outputcoord = "id:" + to_string(markerIds[i]) + " Pos: " + to_string(actualx) + " " + to_string(actualy) + " " + to_string(actualz);
+							putText(I, outputmesg, Point((int)aruco_center[i].x, (int)aruco_center[i].y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255, 0, 0), 2.0);
+							putText(I, outputcoord, Point((int)50, 10 * markerIds[i]), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255, 0, 0), 2.0);
+					
+					
+					
 					}
 					
 				}
+				write_counter++;
+				in_disp.close();
 				//aruco::estimatePoseSingleMarkers(markerCorners, markerLength, instrinsics, distortion, rvec_aruco, tvec_aruco);
 
 
@@ -675,7 +698,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 			}
 
 			//////////////////////
-			std::ofstream in_disp(to_string(write_counter)+"mesh.txt");
+			//std::ofstream in_disp(to_string(write_counter)+"mesh.txt");
 			int x_pos = 0, y_pos = 0;
 			int dummpy_used;
 			string s;
@@ -685,10 +708,11 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 			double c_y = instrinsics.at<double>(5);
 			double f_y = instrinsics.at<double>(4);
 			
+			
 
 
-			for (int h = 0; h < colorheight; h=h+3){//colorheight
-				for (int w = 0; w < colorwidth; w=w+3){//colorwidth
+			for (int h = 0; h < colorheight; h++){//colorheight
+				for (int w = 0; w < colorwidth; w++){//colorwidth
 					int index3 = h*colorwidth + w;
 					ColorSpacePoint dummycolor;
 
@@ -704,12 +728,16 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 						double actualx = (p.X - c_x)*world_point_camera.Z/f_x;
 						double actualy = (p.Y - c_y)*world_point_camera.Z / f_y;
 						
-						if ((rgbimage[4 * idx + 0] < 120) && (rgbimage[4 * idx + 1]>120) && (rgbimage[4 * idx + 2] < 90	)	){
-							in_disp << actualx << " " << actualy << " " << world_point_camera.Z << endl;
-							colorImage.data[index3_color + 0] = rgbimage[4 * idx + 0];
-							colorImage.data[index3_color + 1] = rgbimage[4 * idx + 1];
-							colorImage.data[index3_color + 2] = rgbimage[4 * idx + 2];
-						}
+						//if ((rgbimage[4 * idx + 0] < 120) && (rgbimage[4 * idx + 1]>120) && (rgbimage[4 * idx + 2] < 90	)	){
+							//in_disp << actualx << " " << actualy << " " << world_point_camera.Z << endl;
+							/*colorImage.data[index3_color + 0] = rgbimage[4 * idx + 0];
+							colorImage.data[index3_color + 1] = rgbimage[4 * idx + 1];*/
+						colorImage.data[index3_color + 0] = rgbimage[4 * idx + 0];
+						colorImage.data[index3_color + 1] = world_point_camera.Z * 100;
+
+							colorImage.data[index3_color + 2] = world_point_camera.Z*100;
+							colorImage.data[index3_color + 3] = rgbimage[4 * idx + 3];
+						//}
 						
 						/*colorImage.data[index3_color + 0] = rgbimage[4 * idx + 0];
 						colorImage.data[index3_color + 1] = rgbimage[4 * idx + 1];
@@ -723,9 +751,11 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 
 				}
 			}
+			imshow("fd", colorImage);
+			imwrite("calibrate"+to_string(write_counter) + ".png", colorImage);
+			write_counter++;
 
-
-			in_disp.close();
+			//in_disp.close();
 			
 			//cvtColor(colorImage, colorImage, CV_RGB2HSV);
 			//inRange(colorImage, greenlow, greenhigh, I_inrangeyellow);
