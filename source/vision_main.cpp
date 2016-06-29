@@ -163,7 +163,12 @@ float squareLength = 0.04;
 float markerLength_charuco = 0.02;
 int dictionaryId = 1;
 int margins = squareLength - markerLength_charuco;
+int aruco_center_id = 0;
 Size imageSize;
+
+//chessboard markers
+
+
 //
 //
 ////Ptr<aruco::CharucoBoard> board_charuco = aruco::CharucoBoard::create(squaresX, squaresY, (float)squareLength, (float)markerLength_charuco, dictionary);
@@ -248,9 +253,9 @@ void get_mesh(Geometry *p){
 	int e = p->return_numElems();
 	// global_geo.return_numElems()
 	if (display_counter < 1){
-		p->setSudoNode(100);
-		p->setSudoForcex(100.0);
-		p->setSudoForcey(0.0);
+		p->setSudoNode(98);
+		p->setSudoForcex(50.0);
+		p->setSudoForcey(50.0);
 	}
 	else {
 		p->setSudoNode(20);
@@ -278,10 +283,10 @@ void get_mesh(Geometry *p){
 
 		//double dx = (geo_deform[1].x-geo_deform[0].x );
 		if (first_geo_init == true){
-			mesh_geometry.push_back(Point3f(((p->return_x(i))) / 3.0, (p->return_y(i)) / 3.0, 0));
+			mesh_geometry.push_back(Point3f(((p->return_x(i))) / 1.0, (p->return_y(i)) / 1.0, 0));
 		}
 		else {
-			mesh_geometry[i] = (Point3f(((p->return_x(i))) / 3.0, (p->return_y(i)) / 3.0, 0));
+			mesh_geometry[i] = (Point3f(((p->return_x(i))) / 1.0, (p->return_y(i)) / 1.0, 0));
 		}
 		
 		
@@ -329,12 +334,12 @@ void draw_mesh(Geometry *p, Mat I){
 			line(I, mesh_geometry_display[node_considered2], mesh_geometry_display[node_considered3], Scalar(100, 50, 255), thickness, lineType);
 		}
 
-
+		putText(I, to_string(node_considered1), mesh_geometry_display[node_considered1], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
 /*
 		circle(I, mesh_geometry_display[node_considered1], 100 / 32.0, Scalar(200, 100, 80), -1, 1);
 		circle(I, mesh_geometry_display[node_considered2], 100 / 32.0, Scalar(200,100, 80), -1, 1);
 		circle(I, mesh_geometry_display[node_considered3], 100 / 32.0, Scalar(200, 100, 80), -1, 1);
-		putText(I, to_string(node_considered1), mesh_geometry_display[node_considered1], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+		
 		double dx = (geo_deform[1].x - geo_deform[0].x);
 		string ss = "dx : " + to_string(dx);
 		putText(I, (ss), Point2f(50.0,50.0), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
@@ -384,7 +389,9 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		imshow("undistorted", I_undistorted);
 	}
 
-	
+	if (0){ // iF chess board
+		
+	}
 
 	if (0){//if aruco
 		detectMarkers(src_gray, dictionary, markerCorners, markerIds, parameters, rejectedCandidates);
@@ -497,7 +504,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		//imshow("I_gray_resize", I_inrangeyellow);
 
 		cvtColor(I, I_gray, CV_BGR2GRAY);
-		int resize_num = 2;
+		double resize_num = 4.0;
 		resize(I_gray, I_gray_resize, Size(colorwidth / resize_num, colorheight / resize_num));
 		//resize(hsv, hsv, Size(colorwidth / 4, colorheight / 4));
 
@@ -507,8 +514,29 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		//imshow("I_gray_resize", I_gray_resize);
 		/*imwrite(to_string(write_counter) + ".png", I_flipped);
 		write_counter++;*/
+		int numSquares = numCornersHor * numCornersVer;
+		Size board_sz = Size(numCornersHor, numCornersVer);
+		bool found = findChessboardCorners(I_gray_resize, board_sz, corners, CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FILTER_QUADS);
+
+		if (found)
+		{
+			//cornerSubPix(I, corners, Size(11, 11), Size(-1, -1), TermCriteria(CV_TERMCRIT_EPS | CV_TERMCRIT_ITER, 30, 0.1));
+			
+
+			for (unsigned int i = 0; i < numSquares; i++){
+				
+				corners[i].x = colorwidth - corners[i].x*resize_num;//
+				corners[i].y = corners[i].y*resize_num;
+					
+			
+				
+
+			}
+			drawChessboardCorners(I, board_sz, corners, found);
+		}
+		//imshow("ff", I_gray_resize);
 		//-------------------ARUCO-------------------------
-		if (1){
+		if (0){
 			start_K11 = std::clock();
 
 			detectMarkers(I_gray_resize, dictionary, markerCorners, markerIds);
@@ -532,63 +560,69 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 					
 					}
 					aruco_center.push_back(Point2f(x_ave / 4.0, y_ave / 4.0));
-
-				}
-
-				double c_x = instrinsics.at<double>(2);
-				double f_x = instrinsics.at<double>(0);
-				double c_y = instrinsics.at<double>(5);
-				double f_y = instrinsics.at<double>(4);
-				if (0){
-					cout << "cx: " << c_x << endl;
-					cout << "fx: " << f_x << endl;
-					cout << "cy: " << c_y << endl;
-					cout << "fy: " << f_y << endl;
-				}
-				string outputmesg;
-				string outputcoord;
-				std::ofstream in_disp(to_string(write_counter) + "aruco_center.txt");
-				for (unsigned int i = 0; i < markerIds.size(); i++){
-					int index3 = ((int)aruco_center[i].y)*colorwidth + (int)aruco_center[i].x;
-					ColorSpacePoint dummycolor;
-
-					int _X = (int)depthSpace2[index3].X;
-					int _Y = (int)depthSpace2[index3].Y;
-					// _X = (int)(aruco_center[i].x*static_cast<double>(width)/colorwidth);
-					// _Y = (int)(aruco_center[i].y*static_cast<double>(height) / colorheight);
-					double actualx;
-					double actualy;
-					double actualz;
-					if ((_X >= 0) && (_X < width) && (_Y >= 0) && (_Y < height)){
-						int depth_index = (_Y*width) + _X;
+					if (markerIds[i] == 12){
 						
-						/*CameraSpacePoint q = depth2xyz[depth_index]*/
-						ColorSpacePoint p = depth2rgb[depth_index];
-						CameraSpacePoint world_point_camera = depth2xyz[depth_index];
-						int idx = ((int)p.X) + colorwidth*((int)p.Y);
-						actualx = (p.X - c_x)*world_point_camera.Z / f_x;
-						actualy = (p.Y - c_y)*world_point_camera.Z / f_y;
-						actualz = world_point_camera.Z;
-						//if (actualz >= INFINITE)break;
+						aruco_center_id = i;
+					}
+					
+
+				}
+				aruco::estimatePoseSingleMarkers(markerCorners, markerLength, instrinsics, distortion, rvec_aruco, tvec_aruco);
+				////IF WE ARE WRITING TO FILE THE CENTERS OF THE ARUCO MARKERS
+				if (1){
+					double c_x = instrinsics.at<double>(2);
+					double f_x = instrinsics.at<double>(0);
+					double c_y = instrinsics.at<double>(5);
+					double f_y = instrinsics.at<double>(4);
+					if (1){
+						cout << "cx: " << c_x << endl;
+						cout << "fx: " << f_x << endl;
+						cout << "cy: " << c_y << endl;
+						cout << "fy: " << f_y << endl;
+					}
+					string outputmesg;
+					string outputcoord;
+					std::ofstream in_disp(to_string(write_counter) + "aruco_center.txt");
+					for (unsigned int i = 0; i < markerIds.size(); i++){
+						int index3 = ((int)aruco_center[i].y)*colorwidth + (int)aruco_center[i].x;
+						ColorSpacePoint dummycolor;
+
+						int _X = (int)depthSpace2[index3].X;
+						int _Y = (int)depthSpace2[index3].Y;
+						// _X = (int)(aruco_center[i].x*static_cast<double>(width)/colorwidth);
+						// _Y = (int)(aruco_center[i].y*static_cast<double>(height) / colorheight);
+						double actualx;
+						double actualy;
+						double actualz;
+						if ((_X >= 0) && (_X < width) && (_Y >= 0) && (_Y < height)){
+							int depth_index = (_Y*width) + _X;
+
+							/*CameraSpacePoint q = depth2xyz[depth_index]*/
+							ColorSpacePoint p = depth2rgb[depth_index];
+							CameraSpacePoint world_point_camera = depth2xyz[depth_index];
+							int idx = ((int)p.X) + colorwidth*((int)p.Y);
+							actualx = (p.X - c_x)*world_point_camera.Z / f_x;
+							actualy = (p.Y - c_y)*world_point_camera.Z / f_y;
+							actualz = world_point_camera.Z;
+							//if (actualz >= INFINITE)break;
 
 
-			
+
 							in_disp << markerIds[i] << " " << actualx << " " << actualy << " " << actualz << endl;
 							outputmesg = to_string(markerIds[i]);// +" Pos: " + to_string(actualx) + " " + to_string(actualy) + " " + to_string(actualz);
 							outputcoord = "id:" + to_string(markerIds[i]) + " Pos: " + to_string(actualx) + " " + to_string(actualy) + " " + to_string(actualz);
 							putText(I, outputmesg, Point((int)aruco_center[i].x, (int)aruco_center[i].y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255, 0, 0), 2.0);
 							putText(I, outputcoord, Point((int)50, 10 * markerIds[i]), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255, 0, 0), 2.0);
-					
-					
-					
+
+
+
+						}
+
 					}
-					
+					write_counter++;
+					in_disp.close();
 				}
-				write_counter++;
-				in_disp.close();
-				//aruco::estimatePoseSingleMarkers(markerCorners, markerLength, instrinsics, distortion, rvec_aruco, tvec_aruco);
-
-
+				
 
 				/*for (unsigned int i = 0; i < markerIds.size(); i++){
 					projectPoints(axis_3, rvec_aruco[i], tvec_aruco[i], instrinsics, distortion, output_deform);
@@ -732,10 +766,10 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 							//in_disp << actualx << " " << actualy << " " << world_point_camera.Z << endl;
 							/*colorImage.data[index3_color + 0] = rgbimage[4 * idx + 0];
 							colorImage.data[index3_color + 1] = rgbimage[4 * idx + 1];*/
-						colorImage.data[index3_color + 0] = rgbimage[4 * idx + 0];
-						colorImage.data[index3_color + 1] = world_point_camera.Z * 100;
+						colorImage.data[index3_color + 0] = 0;
+						colorImage.data[index3_color + 1] = world_point_camera.Z * 50;
 
-							colorImage.data[index3_color + 2] = world_point_camera.Z*100;
+							colorImage.data[index3_color + 2] = 0;
 							colorImage.data[index3_color + 3] = rgbimage[4 * idx + 3];
 						//}
 						
@@ -782,7 +816,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 				else{
 					index3 = 0;
 				}
-				if (radius[i] > 4){
+				if (radius[i] >INFINITY){//change!!
 					if ((int)index3 < colorwidth*colorheight){
 
 						int _X = (int)((depthSpace2[index3].X));
@@ -908,16 +942,21 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		}
 		
 		
-		imshow("original", I);
-		if (0)//DRAW VERY IMPORTANT!!!!!!!!!!!
+		//imshow("original", I);
+		if (1)//DRAW VERY IMPORTANT!!!!!!!!!!!
 		{
 
 			//solvePnP(Mat(geo_deform), Mat(tracking_colors), instrinsics, distortion, rvec_new, tvec_new, false);
-			
+			if (found){
+				
+				solvePnP(Mat(obj), Mat(corners), instrinsics, distortion, rvec_new, tvec_new, false);
+				projectPoints(mesh_geometry, rvec_new, tvec_new, instrinsics, distortion, mesh_geometry_display);
+				draw_mesh(geo_ptr, I);
+			}
 			//projectPoints(geo_deform, rvec_new, tvec_new, instrinsics, distortion, output_deform);
 			if (markerIds.size() > 0){
-				projectPoints(mesh_geometry, rvec_aruco[0], tvec_aruco[0], instrinsics, distortion, mesh_geometry_display);
-				draw_mesh(geo_ptr, I_flipped);
+				projectPoints(mesh_geometry, rvec_aruco[aruco_center_id], tvec_aruco[aruco_center_id], instrinsics, distortion, mesh_geometry_display);
+				draw_mesh(geo_ptr, I);
 			}
 			int thickness = 2;
 			int lineType = 8;
@@ -937,8 +976,8 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 			
 			get_mesh(geo_ptr);
 			
-			double dt = abs(std::clock() - start_K11);
-			cout << " dt : " << dt << endl;
+			//double dt = abs(std::clock() - start_K11);
+			//cout << " dt : " << dt << endl;
 			//duration_vision = (std::clock() - start_K11) / (double)CLOCKS_PER_SEC;
 			//cout << "Duration vision: " << duration_vision << endl;
 		}
@@ -1010,9 +1049,9 @@ void rgbcamera_calibration(IMultiSourceFrame* frame) {
 
 
 
-	vector<Point2f> corners;
+	
 
-	vector<Point3f> obj;
+	
 	for (int j = 0; j < numSquares; j++)
 		obj.push_back(Point3f(j / numCornersHor, j%numCornersHor, 0.0f));
 
@@ -1260,6 +1299,13 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 	//board_charuco = aruco::CharucoBoard::create(squaresX, squaresY, (float)squareLength, (float)markerLength_charuco, dictionary);
 	//mesh(1,a);
 	// Main loop
+	rvec_aruco.push_back(Vec3d(0.0, 0.0, 0.0));
+	tvec_aruco.push_back(Vec3d(0.0, 0.0, 0.0));
+	int numSquares = numCornersHor * numCornersVer;
+	//creating the reference chessboard
+	for (int j = 0; j < numSquares; j++)
+		obj.push_back(Point3f((j / numCornersHor)-5, j%numCornersHor, 0.0f));
+
 	execute();
 	return 0;
 }
