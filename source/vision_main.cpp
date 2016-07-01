@@ -165,7 +165,11 @@ int dictionaryId = 1;
 int margins = squareLength - markerLength_charuco;
 int aruco_center_id = 0;
 Size imageSize;
+bool aruco_begin = false;// this means that we have not begun the tracking.
+vector<Point2f> aruco_position;//we have t+1
+vector<Point2f> meshnode_position;//we have t
 
+vector<Point2f> diff;//the diff vector for 
 //chessboard markers
 
 
@@ -252,10 +256,10 @@ void getDepthData(IMultiSourceFrame* frame, GLubyte* dest) {
 void get_mesh(Geometry *p){
 	int e = p->return_numElems();
 	// global_geo.return_numElems()
-	if (display_counter < 1){
-		p->setSudoNode(98);
-		p->setSudoForcex(50.0);
-		p->setSudoForcey(50.0);
+	if (1){
+		p->setSudoNode(147);
+		p->setSudoForcex(diff[0].x/8.0);
+		p->setSudoForcey(diff[0].y /8.0);
 	}
 	else {
 		p->setSudoNode(20);
@@ -298,7 +302,7 @@ void get_mesh(Geometry *p){
 void draw_mesh(Geometry *p, Mat I){
 	int e = p->return_numElems();
 	// global_geo.return_numElems()
-
+	meshnode_position.clear();
 	for (int i = 0; i < p->return_numElems(); i++){
 		int node_considered4=0;
 
@@ -333,8 +337,34 @@ void draw_mesh(Geometry *p, Mat I){
 		else {
 			line(I, mesh_geometry_display[node_considered2], mesh_geometry_display[node_considered3], Scalar(100, 50, 255), thickness, lineType);
 		}
+		
+		if (node_considered1 == 147){
+			meshnode_position.push_back((mesh_geometry_display[node_considered1]));
+			circle(I, mesh_geometry_display[node_considered1], 20, Scalar(0, 100, 255), 4);
+			putText(I, to_string(mesh_geometry_display[node_considered1].x) +"   "+ to_string(mesh_geometry_display[node_considered1].y), mesh_geometry_display[node_considered1], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+		}
+		if (0){ // if draw zero u points
+			bool yes = false;
+			int node_yes;
+			for (int m = 0; m < 9; m++){
+				if ((node_considered1 == m)){
+					yes = true;
+					node_yes = node_considered1;
+				}
+				else if ((node_considered3 == m)){
+					yes = true;
+					node_yes = node_considered3;
+				}
+			}
 
-		putText(I, to_string(node_considered1), mesh_geometry_display[node_considered1], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+			if (yes){
+				//meshnode_position.push_back((mesh_geometry_display[node_considered1]));
+				circle(I, mesh_geometry_display[node_yes], 5, Scalar(100, 58, 58), 5);
+				//putText(I, to_string(mesh_geometry_display[node_considered1].x) + "   " + to_string(mesh_geometry_display[node_considered1].y), mesh_geometry_display[node_considered1], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+			}
+		}
+		
+		//putText(I, to_string(node_considered2), mesh_geometry_display[node_considered2], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
 /*
 		circle(I, mesh_geometry_display[node_considered1], 100 / 32.0, Scalar(200, 100, 80), -1, 1);
 		circle(I, mesh_geometry_display[node_considered2], 100 / 32.0, Scalar(200,100, 80), -1, 1);
@@ -536,11 +566,12 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		}
 		//imshow("ff", I_gray_resize);
 		//-------------------ARUCO-------------------------
-		if (0){
+		if (1){
 			start_K11 = std::clock();
 
 			detectMarkers(I_gray_resize, dictionary, markerCorners, markerIds);
 			aruco_center.clear();
+			aruco_position.clear();
 			//vector< Point2f > charucoCorners; vector< int > markerIds, charucoIds;
 			if (markerIds.size() > 0){
 				//	//cv::aruco::drawDetectedMarkers(image, markerCorners, markerIds);
@@ -560,21 +591,24 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 					
 					}
 					aruco_center.push_back(Point2f(x_ave / 4.0, y_ave / 4.0));
-					if (markerIds[i] == 12){
+					aruco_position.push_back(Point2f(x_ave / 4.0, y_ave / 4.0));
+					//putText(I, ".", Point((int)aruco_center[i].x, (int)aruco_center[i].y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255, 0, 0), 2.0);
+					circle(I, aruco_center[i], 10, cv::Scalar(255, 0, 0), 3);
+					/*if (markerIds[i] == 12){
 						
 						aruco_center_id = i;
 					}
-					
+					*/
 
 				}
-				aruco::estimatePoseSingleMarkers(markerCorners, markerLength, instrinsics, distortion, rvec_aruco, tvec_aruco);
+				//aruco::estimatePoseSingleMarkers(markerCorners, markerLength, instrinsics, distortion, rvec_aruco, tvec_aruco);
 				////IF WE ARE WRITING TO FILE THE CENTERS OF THE ARUCO MARKERS
-				if (1){
+				if (0){
 					double c_x = instrinsics.at<double>(2);
 					double f_x = instrinsics.at<double>(0);
 					double c_y = instrinsics.at<double>(5);
 					double f_y = instrinsics.at<double>(4);
-					if (1){
+					if (0){
 						cout << "cx: " << c_x << endl;
 						cout << "fx: " << f_x << endl;
 						cout << "cy: " << c_y << endl;
@@ -582,7 +616,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 					}
 					string outputmesg;
 					string outputcoord;
-					std::ofstream in_disp(to_string(write_counter) + "aruco_center.txt");
+					//std::ofstream in_disp(to_string(write_counter) + "aruco_center.txt");
 					for (unsigned int i = 0; i < markerIds.size(); i++){
 						int index3 = ((int)aruco_center[i].y)*colorwidth + (int)aruco_center[i].x;
 						ColorSpacePoint dummycolor;
@@ -608,19 +642,19 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 
 
 
-							in_disp << markerIds[i] << " " << actualx << " " << actualy << " " << actualz << endl;
+							//in_disp << markerIds[i] << " " << actualx << " " << actualy << " " << actualz << endl;
 							outputmesg = to_string(markerIds[i]);// +" Pos: " + to_string(actualx) + " " + to_string(actualy) + " " + to_string(actualz);
 							outputcoord = "id:" + to_string(markerIds[i]) + " Pos: " + to_string(actualx) + " " + to_string(actualy) + " " + to_string(actualz);
 							putText(I, outputmesg, Point((int)aruco_center[i].x, (int)aruco_center[i].y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255, 0, 0), 2.0);
 							putText(I, outputcoord, Point((int)50, 10 * markerIds[i]), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255, 0, 0), 2.0);
 
-
+							
 
 						}
 
 					}
-					write_counter++;
-					in_disp.close();
+					//write_counter++;
+					//in_disp.close();
 				}
 				
 
@@ -945,16 +979,31 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		//imshow("original", I);
 		if (1)//DRAW VERY IMPORTANT!!!!!!!!!!!
 		{
-
+			
 			//solvePnP(Mat(geo_deform), Mat(tracking_colors), instrinsics, distortion, rvec_new, tvec_new, false);
 			if (found){
 				
 				solvePnP(Mat(obj), Mat(corners), instrinsics, distortion, rvec_new, tvec_new, false);
 				projectPoints(mesh_geometry, rvec_new, tvec_new, instrinsics, distortion, mesh_geometry_display);
 				draw_mesh(geo_ptr, I);
+				
+			}
+			if (markerIds.size() > 0){ //if there is an aruco marker
+				diff.clear();
+				diff.push_back(Point2f((aruco_position[0].x - meshnode_position[0].x), (aruco_position[0].y - meshnode_position[0].y)));
+				if (cv::norm(diff) > 100){
+					diff.clear();
+					diff.push_back(Point2f(0.0, 0.0));
+				}
+				putText(I, "Force : " + to_string(diff[0].x) + "  " + to_string(diff[0].y), Point2f(50.0, 50.0), 1, 1, Scalar(100, 100, 20));
+			}
+			else{ // if there isn't then put sudo force to zero
+				diff.clear();
+				diff.push_back(Point2f(0.0, 0.0));
+				
 			}
 			//projectPoints(geo_deform, rvec_new, tvec_new, instrinsics, distortion, output_deform);
-			if (markerIds.size() > 0){
+			if (0){
 				projectPoints(mesh_geometry, rvec_aruco[aruco_center_id], tvec_aruco[aruco_center_id], instrinsics, distortion, mesh_geometry_display);
 				draw_mesh(geo_ptr, I);
 			}
@@ -966,7 +1015,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 			line(I, output_deform[1], output_deform[3], Scalar(255, 0, 255), thickness, lineType);
 			line(I, output_deform[3], output_deform[2], Scalar(255, 0, 255), thickness, lineType);
 			line(I, output_deform[2], output_deform[0], Scalar(255, 0, 255), thickness, lineType);*/
-			line(I, Point2f(0, 0), Point2f(100, 100), Scalar(100, 10, 255), thickness, lineType);
+			//line(I, Point2f(0, 0), Point2f(100, 100), Scalar(100, 10, 255), thickness, lineType);
 			
 			imshow("original", I);
 
@@ -974,6 +1023,8 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 			//imshow("In range", I_inrange);
 			first_geo_init = false;
 			
+
+		
 			get_mesh(geo_ptr);
 			
 			//double dt = abs(std::clock() - start_K11);
@@ -1270,11 +1321,12 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 	
 		geo_ptr->set_beta1(0.9); // if beta_2 >= beta1 and beta > 1/2 then the time stepping scheme is unconditionally stable.
 		geo_ptr->set_beta2(0.9);
-		geo_ptr->set_dt(1.0);
-		geo_ptr->set_dynamic_alpha(0.0023);
-		geo_ptr->set_dynamic_xi(0.0023);
+		geo_ptr->set_dt(1.5);
+		geo_ptr->set_dynamic_alpha(0.056);//damping
+		geo_ptr->set_dynamic_xi(0.016);//damping
 		
 	}
+	diff.push_back(Point2f(0.0, 0.0));
 	//global_geo.initialize_CUDA
 	display_counter = 0;
 	first_geo_init = true;
@@ -1306,6 +1358,8 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 	for (int j = 0; j < numSquares; j++)
 		obj.push_back(Point3f((j / numCornersHor)-5, j%numCornersHor, 0.0f));
 
+
+	
 	execute();
 	return 0;
 }
