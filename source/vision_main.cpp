@@ -256,41 +256,48 @@ void getDepthData(IMultiSourceFrame* frame, GLubyte* dest) {
 void get_mesh(Geometry *p){
 	int e = p->return_numElems();
 	// global_geo.return_numElems()
-	if (1){
-		p->setSudoNode(147);
-		p->setSudoForcex(diff[0].x/8.0);
-		p->setSudoForcey(diff[0].y /8.0);
+	if (p->get_dynamic()){
+		if (1){
+			p->setSudoNode(100);
+			p->setSudoForcex(diff[0].x / 8.0);
+			p->setSudoForcey(diff[0].y / 8.0);
+		}
+		else {
+			p->setSudoNode(100);
+			p->setSudoForcex(0);
+			p->setSudoForcey(0);
+		}
+		/*if (display_counter == 500){
+		p->setSudoNode(20);
+		p->setSudoForcex(-100);
+		p->setSudoForcey(-100);
+		}*/
+		display_counter++;
+		/*if (!cuda_init){
+			p->initialize_CUDA();
+			cuda_init = true;
+			}*/
+		p->make_K_matrix();
+		p->find_b();
+
+		p->update_vector();
+		p->update_dynamic_vectors();
+		p->update_dynamic_xyz();
 	}
 	else {
-		p->setSudoNode(20);
-		p->setSudoForcex(0);
-		p->setSudoForcey(0);
-	}
-	/*if (display_counter == 500){
-	p->setSudoNode(20);
-	p->setSudoForcex(-100);
-	p->setSudoForcey(-100);
-	}*/
-	display_counter++;
-	/*if (!cuda_init){
-		p->initialize_CUDA();
-		cuda_init = true;
-	}*/
-	p->make_K_matrix();
-	p->find_b();
 
-	p->update_vector();
-	p->update_dynamic_vectors();
-	p->update_dynamic_xyz();
+	}
+
+
 	mesh_geometry.empty();
 	for (int i = 0; i <p->return_numNodes(); i++){
 
 		//double dx = (geo_deform[1].x-geo_deform[0].x );
 		if (first_geo_init == true){
-			mesh_geometry.push_back(Point3f(((p->return_x(i))) / 1.0, (p->return_y(i)) / 1.0, 0));
+			mesh_geometry.push_back(Point3f(((p->return_x(i)))*1, (p->return_y(i)) , 2.0));
 		}
 		else {
-			mesh_geometry[i] = (Point3f(((p->return_x(i))) / 1.0, (p->return_y(i)) / 1.0, 0));
+			mesh_geometry[i] = (Point3f(((p->return_x(i))) , (p->return_y(i)) , 2.0));
 		}
 		
 		
@@ -310,11 +317,11 @@ void draw_mesh(Geometry *p, Mat I){
 		int node_considered2 = p->node_number_inElem(i, 1);
 		int node_considered3 = p->node_number_inElem(i, 2);
 		if (p->return_dim() == 3){
-			int node_considered4 = p->node_number_inElem(i, 3);
+			node_considered4 = p->node_number_inElem(i, 3);
 		}
 
 
-
+		
 
 		int thickness = 1;
 		int lineType = 8;
@@ -324,7 +331,7 @@ void draw_mesh(Geometry *p, Mat I){
 		line(I, mesh_geometry_display[node_considered1], mesh_geometry_display[node_considered2], Scalar(100, 50, 255), thickness, lineType);
 
 		line(I, mesh_geometry_display[node_considered3], mesh_geometry_display[node_considered1], Scalar(100, 50, 255), thickness, lineType);
-
+		
 		if (p->return_dim() == 3){
 			line(I, mesh_geometry_display[node_considered2], mesh_geometry_display[node_considered4], Scalar(100, 50, 255), thickness, lineType);
 			line(I, mesh_geometry_display[node_considered4], mesh_geometry_display[node_considered3], Scalar(100, 50, 255), thickness, lineType);
@@ -338,12 +345,12 @@ void draw_mesh(Geometry *p, Mat I){
 			line(I, mesh_geometry_display[node_considered2], mesh_geometry_display[node_considered3], Scalar(100, 50, 255), thickness, lineType);
 		}
 		
-		if (node_considered1 == 147){
-			meshnode_position.push_back((mesh_geometry_display[node_considered1]));
-			circle(I, mesh_geometry_display[node_considered1], 20, Scalar(0, 100, 255), 4);
-			putText(I, to_string(mesh_geometry_display[node_considered1].x) +"   "+ to_string(mesh_geometry_display[node_considered1].y), mesh_geometry_display[node_considered1], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+		if (node_considered3 == 100){
+			meshnode_position.push_back((mesh_geometry_display[node_considered3]));
+			circle(I, mesh_geometry_display[node_considered3], 20, Scalar(0, 100, 255), 4);
+			putText(I, to_string(mesh_geometry_display[node_considered3].x) + "   " + to_string(mesh_geometry_display[node_considered3].y), mesh_geometry_display[node_considered3], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
 		}
-		if (0){ // if draw zero u points
+		if (1){ // if draw zero u points
 			bool yes = false;
 			int node_yes;
 			for (int m = 0; m < 9; m++){
@@ -354,6 +361,10 @@ void draw_mesh(Geometry *p, Mat I){
 				else if ((node_considered3 == m)){
 					yes = true;
 					node_yes = node_considered3;
+				}
+				else if (node_considered2 == m){
+					yes = true;
+					node_yes = node_considered2;
 				}
 			}
 
@@ -378,7 +389,9 @@ void draw_mesh(Geometry *p, Mat I){
 			circle(I, mesh_geometry_display[node_considered4], 70 / 32.0, Scalar(200, 0, 80), -1, 1);
 		}*/
 
-
+		circle(I, mesh_geometry_display[node_considered1], 100 / 32.0, Scalar(200, 100, 80), -1, 1);
+		//circle(I, mesh_geometry_display[node_considered2], 100 / 32.0, Scalar(200, 100, 80), -1, 1);
+		//circle(I, mesh_geometry_display[node_considered3], 100 / 32.0, Scalar(200, 100, 80), -1, 1);
 
 	}
 
@@ -1363,3 +1376,4 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 	execute();
 	return 0;
 }
+

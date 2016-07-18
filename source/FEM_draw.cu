@@ -12,6 +12,19 @@
 #include "FEM_draw.cuh"
 #include "cudaFEM_read.cuh"
 
+//Include for CMIZ
+#include "zinc/context.hpp"
+#include "zinc/element.hpp"
+#include "zinc/field.hpp"
+#include "zinc/fieldcache.hpp"
+#include "zinc/fieldmodule.hpp"
+#include <zinc/fieldvectoroperators.hpp>
+#include "zinc/region.hpp"
+#include "zinc/sceneviewer.hpp"
+#include "zinc/scene.hpp"
+#include <iostream>
+using namespace OpenCMISS::Zinc;
+
 #define RADIUS          150.0f
 #define STEP_LONGITUDE   22.5f                   /* 22.5 makes 8 bands like original Boing */
 #define STEP_LATITUDE    22.5f
@@ -645,7 +658,7 @@ void drawMesh(Geometry *p){
 		int node_considered2 = p->node_number_inElem(i, 1);
 		int node_considered3 = p->node_number_inElem(i, 2);
 		if (p->return_dim() == 3){
-			int node_considered4 = p->node_number_inElem(i, 3);
+			node_considered4 = p->node_number_inElem(i, 3);
 		}
 		
 		
@@ -659,7 +672,7 @@ void drawMesh(Geometry *p){
 		
 		if (p->return_dim() == 3){
 			glLineWidth(2);
-			glColor4f(x, y, (float)i / numElem, 0.5);
+			glColor4f(1, y, z, 0.5);
 			glBegin(GL_LINE_LOOP);
 			glVertex3f(p->return_x(node_considered1) * 400 - 200, p->return_y(node_considered1) * 400 - 200, p->return_z(node_considered1) * 400);       /* NE */
 			glVertex3f(p->return_x(node_considered2) * 400 - 200, p->return_y(node_considered2) * 400 - 200, p->return_z(node_considered2) * 400);       /* NE */
@@ -687,14 +700,15 @@ void drawMesh(Geometry *p){
 			glEnd();
 		}
 		else if (p->return_dim() == 2){
-			glColor4f(x/5 , y/5 , (float)i / numElem, 0.5);
+			//glColor4f(p->global_stress_mises[i]*10.0, 0.2, 0.5, 0.5);
+			glColor3f(p->global_stress_mises[i] * 10.0, 0.0, 1.0);
 			//glColor3f(1.0, 0.0, 1.0);
 			glPolygonMode(GL_FRONT_AND_BACK, GL_TRIANGLES);
 			glBegin(GL_TRIANGLES);
 			glVertex3f(p->return_x(node_considered1) * 200 - 200, p->return_y(node_considered1) * 200 - 200, p->return_z(node_considered1) * 200);       /* NE */
 			glVertex3f(p->return_x(node_considered2) * 200 - 200, p->return_y(node_considered2) * 200 - 200, p->return_z(node_considered2) * 200);       /* NE */
 			glVertex3f(p->return_x(node_considered3) * 200 - 200, p->return_y(node_considered3) * 200 - 200, p->return_z(node_considered3) * 200);       /* NE */
-			glColor3f(1.0, 0.0, 1.0);
+			glColor3f(p->global_stress_mises[i] * 10.0, 0.0, 1.0);
 			glEnd();
 			glBegin(GL_LINE_LOOP);
 			glVertex3f(p->return_x(node_considered1) * 200 - 200, p->return_y(node_considered1) * 200 - 200, p->return_z(node_considered1) * 200);
@@ -824,19 +838,28 @@ int draw_things(Geometry *p)
 	init();
 	t = 0;
 	/* Main loop */
-	p->initilizeMatrices();
+	//p->initilizeMatrices();
+
+	//----------opencmiss
 
 
+
+	glfwMakeContextCurrent(window);
+
+	glfwPollEvents();
+
+	///-cmiss
 	double duration_K;
 	bool cuda_init = false;
 	int display_counter = 0;
 	//initilizing all of the vectors
-	p->initialize_dynamic();
+	if (p->get_dynamic())
+		p->initialize_dynamic();
 	p->set_beta1(0.9); // if beta_2 >= beta1 and beta > 1/2 then the time stepping scheme is unconditionally stable.
 	p->set_beta2(0.9);
-	p->set_dt(1.3);
-	p->set_dynamic_alpha(0.002);
-	p->set_dynamic_xi(0.0023);
+	p->set_dt(0.05);
+	p->set_dynamic_alpha(0.02);
+	p->set_dynamic_xi(0.023);
 	p->initialize_zerovector(9);
 	//next we set what nodes we want to make stable
 	int points[9];
@@ -849,6 +872,71 @@ int draw_things(Geometry *p)
 	if (!p->get_dynamic()){
 		for (;;){
 
+
+
+			///* Timing */
+			//t = glfwGetTime();
+			//dt = t - t_old;
+			//t_old = t;
+			//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			//glPushMatrix();
+			//glRotatef(rotate.x, 1.0, 0.0, 0.0);
+			//glRotatef(rotate.y, 0.0, 100.0, 0.0);
+			//glScalef(distance_change, distance_change, distance_change);
+			//glTranslatef(translation.x, translation.y, translation.z);
+			///* Draw one frame */
+			////display();
+			////DrawGrid();
+			//drawMesh(p);
+			//glPopMatrix();
+			//glFlush();
+			///* Swap buffers */
+			//glfwSwapBuffers(window);
+			//glfwPollEvents();
+
+
+
+			////Solve the 2D FEM in each frame
+			//if (display_counter < 100){
+			//	p->setSudoNode(20);
+			//	p->setSudoForcex(0);
+			//	p->setSudoForcey(0);
+			//}
+			//else {
+			//	p->setSudoNode(20);
+			//	p->setSudoForcex(0);
+			//	p->setSudoForcey(0);
+			//}
+
+
+			//display_counter++;
+			//if (p->return_dim() == 3){
+			//	p->Linear3DBarycentric_B_CUDA_host();
+			//}
+
+
+			//p->make_K_matrix();
+
+			////p->make_surface_f();
+
+
+
+			//if (!cuda_init){
+			//	p->initialize_CUDA();
+
+			//	cuda_init = true;
+			//}
+			//std::clock_t start_K;
+			//start_K = std::clock();
+			//p->tt();
+			//duration_K = (std::clock() - start_K) / (double)CLOCKS_PER_SEC;
+
+
+			////std::cout << " change status : " << changeNode << std::endl;
+
+			//std::cout << "Solver time ms:  " << duration_K << std::endl;
+			////std::cout << " closet node : " << closest_Node << std::endl;
+			//t++;
 
 
 			/* Timing */
@@ -865,32 +953,34 @@ int draw_things(Geometry *p)
 			//display();
 			//DrawGrid();
 			drawMesh(p);
+			
+
+
+			////////-----------------------CMISS
+
+		
+
+			////////////-------------------------------
 			glPopMatrix();
 			glFlush();
+			
 			/* Swap buffers */
 			glfwSwapBuffers(window);
+			
 			glfwPollEvents();
-
-
+			
+			std::clock_t start_K;
+			start_K = std::clock();
 
 			//Solve the 2D FEM in each frame
-			if (display_counter < 100){
-				p->setSudoNode(20);
-				p->setSudoForcex(100.0);
-				p->setSudoForcey(100.0);
-			}
-			else {
-				p->setSudoNode(20);
-				p->setSudoForcex(0);
-				p->setSudoForcey(0);
-			}
-
-
-			display_counter++;
-			if (p->return_dim() == 3){
+			p->setSudoNode(200);
+			p->setSudoForcex( 6.0);
+			p->setSudoForcey( 6.0);
+			
+			/*if (p->return_dim() == 3){
 				p->Linear3DBarycentric_B_CUDA_host();
 			}
-
+*/
 
 			p->make_K_matrix();
 
@@ -900,11 +990,9 @@ int draw_things(Geometry *p)
 
 			if (!cuda_init){
 				p->initialize_CUDA();
-
 				cuda_init = true;
 			}
-			std::clock_t start_K;
-			start_K = std::clock();
+		
 			p->tt();
 			duration_K = (std::clock() - start_K) / (double)CLOCKS_PER_SEC;
 
@@ -922,15 +1010,16 @@ int draw_things(Geometry *p)
 	else{
 		for (;;){
 			if (display_counter < 1){
-				p->setSudoNode(100);
-				p->setSudoForcex(10);
-				p->setSudoForcey(10);
+				p->setSudoNode(120);
+				p->setSudoForcex(1000.0);
+				p->setSudoForcey(2000.0);
 			}
 			else {
-				p->setSudoNode(20);
+				p->setSudoNode(120);
 				p->setSudoForcex(0);
 				p->setSudoForcey(0);
 			}
+		
 			/*if (display_counter == 500){
 				p->setSudoNode(20);
 				p->setSudoForcex(-100);

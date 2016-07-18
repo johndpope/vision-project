@@ -145,6 +145,8 @@ void Geometry::read_elem(){
 	nodesInElem_device = new int[numE*numNodesPerElem];
 	
 
+	//Allocate a new vector for storing all of the stresses at an element
+	global_stress_mises = new double[numE];
 
 
 	cudaMalloc((void**)&nodesInElem_device, numE*numNodesPerElem*sizeof(int));
@@ -298,7 +300,7 @@ void Geometry::make_K_matrix(){
 			//cout << Linear2DJacobianDet_Barycentric(nodesInElem[e], x, y) << endl;
 
 			if (dim == 2){
-				AssembleLocalElementMatrixBarycentric2D(nodesInElem[e], x, y, dim, E[e],M[e], Poisson, Young, thickness);
+				AssembleLocalElementMatrixBarycentric2D(e,nodesInElem[e],displaceInElem, x, y, dim, E[e],M[e], Poisson, Young, thickness);
 			}
 			else if (dim == 3){
 				AssembleLocalElementMatrixBarycentric3D(nodesInElem[e], x, y, z, dim, E[e], Poisson, Young, thickness);
@@ -844,15 +846,17 @@ void Geometry::Linear2DBarycentric_D(double **term, double nu, double youngE){
 	term[0][1] = term[1][0] = nu;
 	term[2][2] = (1 - nu) / 2;*/
 
-	term[0][0] = term[1][1]=  1;
+	term[0][0] = term[1][1]=  1.0;
 	term[0][1] = term[1][0] = nu;
-	term[2][2] = (1 - nu) / 2;
+	term[2][2] = (1 - nu) / 2.0;
+#if 0   //We won't use this here becuase too much floating errors
 	for (int i = 0; i < 3; i++){
 		for (int j = 0; j < 3; j++){
 			//term[i][j] = (youngE / (1 - nu*nu))*term[i][j];
-			term[i][j] = (youngE / ((1 - nu*nu)))*term[i][j];
+			//term[i][j] = (youngE / ((1.0 - nu*nu)))*term[i][j]; I will multiply this huge number after the B^T D B
 		}
 	}
+#endif
 
 }
 
@@ -890,20 +894,26 @@ void Geometry::Linear3DBarycentric_D(double **term, double nu, double youngE){
 
 }
 
-void Geometry::AssembleLocalElementMatrixBarycentric2D(int *nodes, double *x, double *y, int dimension, double **E,double **M, double nu, double youngE, double thickness)
+void Geometry::AssembleLocalElementMatrixBarycentric2D(int elem_n,int *nodes,int **displaceinE, double *x, double *y, int dimension, double **E,double **M, double nu, double youngE, double thickness)
 {
 	// thte dimension for B is 3x6
 	int n = 3;
+	//declear how many rows that we will have, 
 	double **B = new double*[n];
 	double **D = new double*[n];
-	double **B_TXD = new double*[n * 2];
+	double **B_TXD = new double*[n * 2]; 
 	double **integrand = new double*[n * 2];
+	double **DB = new double*[n];
+	double *stress = new double[n];
 
 
+	//Now we will loop through the columns
 	for (int i = 0; i < n; i++){
 
 		B[i] = new double[n * 2];
 		D[i] = new double[n];
+		DB[i] = new double[n * 2];
+		stress[i] = 0;//initializing the stress vector
 	}
 	for (int i = 0; i <n * 2; i++){
 
@@ -918,6 +928,12 @@ void Geometry::AssembleLocalElementMatrixBarycentric2D(int *nodes, double *x, do
 	for (int row = 0; row < n * 2; row++){
 		for (int col = 0; col < n; col++){
 			B_TXD[row][col] = 0;
+		}
+	}
+
+	for (int row = 0; row < n; row++){
+		for (int col = 0; col < n * 2; col++){
+			DB[row][col] = 0;
 		}
 	}
 
@@ -957,13 +973,62 @@ void Geometry::AssembleLocalElementMatrixBarycentric2D(int *nodes, double *x, do
 		}
 	}
 
-	//std::cout << "B_T x D : " << std::endl;
-	//for (int row = 0; row < 6; row++){
-	//	for (int col = 0; col < 3; col++){
-	//		std::cout << B_TXD[row][col] << "    ";
-	//	}
-	//	std::cout<<std::endl;
-	//}
+
+	//Find von-mises stresses
+	//First is D*B [DONT FORGET TO MULTIPLY BY (youngE / ((1.0 - nu*nu)))*thickness]
+
+	for (int row = 0; row < n ; row++){
+		for (int col = 0; col < n * 2; col++){
+			for (int k = 0; k < n; k++){
+				DB[row][col] = DB[row][col] + D[row][k] * B[k][col];
+			}
+		}
+	}
+
+
+	for (int row = 0; row < n; row++){
+		for (int col = 0; col < n ; col++){
+			for (int k = 0; k < 2; k++){
+				stress[row] = stress[row] + DB[row][col*2+k] * u[displaceinE[nodes[col]][k]];
+			}
+			
+			
+			
+		}
+		stress[row] = stress[row] * (youngE / ((1.0 - nu*nu)))*thickness*(J / 2.0);
+	}
+	
+	global_stress_mises[elem_n] = sqrt((stress[0] + stress[1])*(stress[0] + stress[1]) - 3 * (stress[0] * stress[1] - stress[2] * stress[2]));
+#if 0  ///Print strain out
+	std::cout << "DB : " << std::endl;
+	for (int row = 0; row < 3; row++){
+		for (int col = 0; col < 6; col++){
+			std::cout << DB[row][col] << "    ";
+		}
+		std::cout<<std::endl;
+	}
+#endif
+
+#if 0
+	std::cout << " stress : " << std::endl;
+
+	for (int row = 0; row < 3; row++){
+		std::cout << stress[row] << std::endl;
+	}
+
+#endif
+#if 0
+
+	std::cout << global_stress_mises[elem_n] << std::endl;
+#endif
+
+#if 0
+	for (int row = 0; row < 3; row++){
+		for (int k = 0; k < 2; k++){
+			std::cout << DB[row][nodes[row]] << std::endl;
+		}
+	}
+#endif
 
 
 
@@ -973,11 +1038,11 @@ void Geometry::AssembleLocalElementMatrixBarycentric2D(int *nodes, double *x, do
 	//	}
 	//}
 
-
+	
 	for (int row = 0; row < n * 2; row++){
 		for (int col = 0; col < n * 2; col++){
 
-			E[row][col] = thickness*(J / 2) * integrand[row][col];
+			E[row][col] = (youngE / ((1.0 - nu*nu)))*thickness*(J / 2.0) * integrand[row][col];
 
 		}
 
@@ -1015,49 +1080,50 @@ void Geometry::AssembleLocalElementMatrixBarycentric2D(int *nodes, double *x, do
 	double c_i = X_k - X_j;
 	double c_j = X_i - X_k;
 	double c_k = X_j - X_i;
-	double rho = 1000;
-	M[0][0] = 2 * A*rho*thickness / 3;
-	M[0][1] = 0;
-	M[0][2] = A*rho*thickness / 2;
-	M[0][3] = 0;
-	M[0][4] = -A*rho*thickness / 6;
-	M[0][5] = 0;
-	M[1][0] = 0;
-	M[1][1] = 2 * A*rho*thickness / 3;
-	M[1][2] = 0;
-	M[1][3] = A*rho*thickness / 2;
-	M[1][4] = 0;
-	M[1][5] = -A*rho*thickness / 6;
-	M[2][0] = A*rho*thickness / 2;
-	M[2][1] = 0;
-	M[2][2] = 2 * A*rho*thickness / 3;
-	M[2][3] = 0;
-	M[2][4] = -A*rho*thickness / 6;
-	M[2][5] = 0;
-	M[3][0] = 0;
-	M[3][1] = A*rho*thickness / 2;
-	M[3][2] = 0;
-	M[3][3] = 2 * A*rho*thickness / 3;
-	M[3][4] = 0;
-	M[3][5] = -A*rho*thickness / 6;
-	M[4][0] = -A*rho*thickness / 6;
-	M[4][1] = 0;
-	M[4][2] = -A*rho*thickness / 6;
-	M[4][3] = 0;
-	M[4][4] = A*rho*thickness / 3;
-	M[4][5] = 0;
-	M[5][0] = 0;
-	M[5][1] = -A*rho*thickness / 6;
-	M[5][2] = 0;
-	M[5][3] = -A*rho*thickness / 6;
-	M[5][4] = 0;
-	M[5][5] = A*rho*thickness / 3;
+	double rho = 1000.0;
+	M[0][0] = 2 * A*rho*thickness / 3.0;
+	M[0][1] = 0.0;
+	M[0][2] = A*rho*thickness / 2.0;
+	M[0][3] = 0.0;
+	M[0][4] = -A*rho*thickness / 6.0;
+	M[0][5] = 0.0;
+	M[1][0] = 0.0;
+	M[1][1] = 2 * A*rho*thickness / 3.0;
+	M[1][2] = 0.0;
+	M[1][3] = A*rho*thickness / 2.0;
+	M[1][4] = 0.0;
+	M[1][5] = -A*rho*thickness / 6.0;
+	M[2][0] = A*rho*thickness / 2.0;
+	M[2][1] = 0.0;
+	M[2][2] = 2 * A*rho*thickness / 3.0;
+	M[2][3] = 0.0;
+	M[2][4] = -A*rho*thickness / 6.0;
+	M[2][5] = 0.0;
+	M[3][0] = 0.0;
+	M[3][1] = A*rho*thickness / 2.0;
+	M[3][2] = 0.0;
+	M[3][3] = 2.0* A*rho*thickness / 3.0;
+	M[3][4] = 0.0;
+	M[3][5] = -A*rho*thickness / 6.0;
+	M[4][0] = -A*rho*thickness / 6.0;
+	M[4][1] = 0.0;
+	M[4][2] = -A*rho*thickness / 6.0;
+	M[4][3] = 0.0;
+	M[4][4] = A*rho*thickness / 3.0;
+	M[4][5] = 0.0;
+	M[5][0] = 0.0;
+	M[5][1] = -A*rho*thickness / 6.0;
+	M[5][2] = 0.0;
+	M[5][3] = -A*rho*thickness / 6.0;
+	M[5][4] = 0.0;
+	M[5][5] = A*rho*thickness / 3.0;
 
 
 	for (int i = 0; i < n; i++){
 
 		delete B[i];
 		delete D[i];
+		delete DB[i];
 	}
 	for (int i = 0; i < n * 2; i++){
 
@@ -1069,6 +1135,8 @@ void Geometry::AssembleLocalElementMatrixBarycentric2D(int *nodes, double *x, do
 	delete[] D;
 	delete[] B_TXD;
 	delete[] integrand;
+	delete[] DB;
+	delete[] stress;
 
 }
 
@@ -1229,7 +1297,7 @@ void Geometry::Linear3DBarycentric_B_CUDA_host(){
 	cudaDeviceProp prop;
 	cudaGetDeviceProperties(&prop, 0);
 	cudaMemset(d_A_dense, 0, numNodes*dim*numNodes*dim*sizeof(*d_A_dense));
-	make_K_cuda << <numE / 144, 144 >> >(E_vector_device, nodesInElem_device, d_x, d_y, d_z, displaceInElem_device, d_A_dense);
+	make_K_cuda << <(numE) / 144, 144 >> >(E_vector_device, nodesInElem_device, d_x, d_y, d_z, displaceInElem_device, d_A_dense, numNodes);
 
 	cudaMemcpy(h_A_dense, d_A_dense, numNodes*dim*numNodes*dim*sizeof(*d_A_dense), cudaMemcpyDeviceToHost);
 
@@ -1381,7 +1449,7 @@ void Geometry::ApplySudoForcesBarycentric(int numP, int node_applied, int *local
 			f[row] += forceVec_y;
 		}
 		else if (dof == 2){
-			f[row] += node_c / 1728.0;
+			f[row] += 0.0 / 1728.0;
 		}
 	}
 
