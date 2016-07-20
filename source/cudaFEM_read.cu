@@ -1041,7 +1041,7 @@ void Geometry::AssembleLocalElementMatrixBarycentric2D(int elem_n,int *nodes,int
 	
 	for (int row = 0; row < n * 2; row++){
 		for (int col = 0; col < n * 2; col++){
-
+			row = row ^ 2;
 			E[row][col] = (youngE / ((1.0 - nu*nu)))*thickness*(J / 2.0) * integrand[row][col];
 
 		}
@@ -1297,7 +1297,7 @@ void Geometry::Linear3DBarycentric_B_CUDA_host(){
 	cudaDeviceProp prop;
 	cudaGetDeviceProperties(&prop, 0);
 	cudaMemset(d_A_dense, 0, numNodes*dim*numNodes*dim*sizeof(*d_A_dense));
-	make_K_cuda << <(numE) / 144, 144 >> >(E_vector_device, nodesInElem_device, d_x, d_y, d_z, displaceInElem_device, d_A_dense, numNodes);
+	make_K_cuda3d << <(numE) / 144, 144 >> >(E_vector_device, nodesInElem_device, d_x, d_y, d_z, displaceInElem_device, d_A_dense, numNodes);
 
 	cudaMemcpy(h_A_dense, d_A_dense, numNodes*dim*numNodes*dim*sizeof(*d_A_dense), cudaMemcpyDeviceToHost);
 

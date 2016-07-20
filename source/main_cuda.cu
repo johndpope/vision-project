@@ -24,8 +24,8 @@ int main(void){
 	testing_geo.read_nodes();
 	testing_geo.read_elem();
 	testing_geo.read_force();
-	testing_geo.set_YoungPoisson(2000.0, 0.499);
-	testing_geo.set_thickness(5.0);
+	testing_geo.set_YoungPoisson(200000.0, 0.399);
+	testing_geo.set_thickness(0.1);
 	testing_geo.initilizeMatrices();
 	testing_geo.initialize_CUDA();
 	testing_geo.set_dynamic(true);

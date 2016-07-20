@@ -701,14 +701,14 @@ void drawMesh(Geometry *p){
 		}
 		else if (p->return_dim() == 2){
 			//glColor4f(p->global_stress_mises[i]*10.0, 0.2, 0.5, 0.5);
-			glColor3f(p->global_stress_mises[i] * 10.0, 0.0, 1.0);
+			glColor3f(p->global_stress_mises[i] * 10.0, p->global_stress_mises[i] * 2.0, p->global_stress_mises[i] * 5.0);
 			//glColor3f(1.0, 0.0, 1.0);
 			glPolygonMode(GL_FRONT_AND_BACK, GL_TRIANGLES);
 			glBegin(GL_TRIANGLES);
 			glVertex3f(p->return_x(node_considered1) * 200 - 200, p->return_y(node_considered1) * 200 - 200, p->return_z(node_considered1) * 200);       /* NE */
 			glVertex3f(p->return_x(node_considered2) * 200 - 200, p->return_y(node_considered2) * 200 - 200, p->return_z(node_considered2) * 200);       /* NE */
 			glVertex3f(p->return_x(node_considered3) * 200 - 200, p->return_y(node_considered3) * 200 - 200, p->return_z(node_considered3) * 200);       /* NE */
-			glColor3f(p->global_stress_mises[i] * 10.0, 0.0, 1.0);
+			glColor3f(p->global_stress_mises[i] * 10.0, p->global_stress_mises[i] * 2.0, p->global_stress_mises[i] * 5.0);
 			glEnd();
 			glBegin(GL_LINE_LOOP);
 			glVertex3f(p->return_x(node_considered1) * 200 - 200, p->return_y(node_considered1) * 200 - 200, p->return_z(node_considered1) * 200);
@@ -858,8 +858,8 @@ int draw_things(Geometry *p)
 	p->set_beta1(0.9); // if beta_2 >= beta1 and beta > 1/2 then the time stepping scheme is unconditionally stable.
 	p->set_beta2(0.9);
 	p->set_dt(0.05);
-	p->set_dynamic_alpha(0.02);
-	p->set_dynamic_xi(0.023);
+	p->set_dynamic_alpha(0.2);
+	p->set_dynamic_xi(0.23);
 	p->initialize_zerovector(9);
 	//next we set what nodes we want to make stable
 	int points[9];
@@ -1010,8 +1010,8 @@ int draw_things(Geometry *p)
 	else{
 		for (;;){
 			if (display_counter < 1){
-				p->setSudoNode(120);
-				p->setSudoForcex(1000.0);
+				p->setSudoNode(900);
+				p->setSudoForcex(3000.0);
 				p->setSudoForcey(2000.0);
 			}
 			else {
@@ -1046,13 +1046,19 @@ int draw_things(Geometry *p)
 			glfwPollEvents();
 
 			///dynamic calculations
+		
 			p->make_K_matrix();
+			
 			p->find_b();
+			std::clock_t start_K;
+			start_K = std::clock();
 			p->update_vector();
+			duration_K = (std::clock() - start_K) / (double)CLOCKS_PER_SEC;
+			std::cout << "Solver time ms:  " << duration_K << std::endl;
 			p->update_dynamic_vectors();
 			p->update_dynamic_xyz();
 			t++;
-
+			
 			/* Check if we are still running */
 			if (glfwWindowShouldClose(window))
 				break;

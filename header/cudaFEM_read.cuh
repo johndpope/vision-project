@@ -50,8 +50,10 @@ class Geometry{
 	double ***E = NULL;					// Array of local element stiffness matrices
 	double ***M = NULL;
 	double *E_vector_host = NULL;// local elements in array form
-	double *E_vector_device = NULL;
-	int **displaceInElem=NULL;
+	double *E_vector_device = NULL;	
+	// This 2D array will have information regarding the d.o.f of each element, i.e. displaceInElem[1][0] will give us the
+	// index for displacement of the first node and its 0th d.o.f, the second entry can range from 0-dim.
+	int **displaceInElem=NULL;  
 	int *displaceInElem_host=NULL;
 	int *displaceInElem_device=NULL;
 
@@ -132,9 +134,13 @@ class Geometry{
 	//set dirichlet conditions
 	int *vector_zero_nodes = NULL;
 	int numNodesZero;
+
+	
 public:
 	Geometry();
 	~Geometry();
+	//VON MISES STRESS
+	double *global_stress_mises = NULL;
 	void read_nodes(void);
 	void read_elem(void);
 	void read_force(void);
@@ -158,9 +164,11 @@ public:
 	void Linear2DBarycentric_B(int *nodes, double *x, double *y, double **term);
 	double Linear2DJacobianDet_Barycentric(int *nodes, double *x, double *y);
 	void Linear2DBarycentric_D(double **term, double nu, double youngE);
-	void AssembleLocalElementMatrixBarycentric2D(int *nodes, double *x, double *y, int dimension, double **E,double **M, double nu, double youngE, double thickness);
+	void AssembleLocalElementMatrixBarycentric2D(int,int *nodes,int **, double *x, double *y, int dimension, double **E,double **M, double nu, double youngE, double thickness);
 	void AssembleGlobalElementMatrixBarycentric(int numP, int numE, int nodesPerElem, int **elem, double ***E,double ***M, float *K,double *global_M, int **displaceInElem);
 	
+
+
 	//*******************3D***************
 	
 	void Linear3DBarycentric_D(double **term, double nu, double youngE);
@@ -195,7 +203,7 @@ public:
 	void initialize_dynamic(void);
 	void update_vector(void);
 	void set_dynamic(bool tf){ dynamic = tf; };
-	bool get_dynamic(){ return dynamic; };
+	bool get_dynamic(){ return dynamic; }; //Bool variable for determining if we are using dynamic FEM
 	void update_dynamic_vectors(void);
 	void update_dynamic_xyz(void);
 	void set_dynamic_alpha(double alpha){ c_alpha = alpha; };
@@ -208,6 +216,9 @@ public:
 	void initialize_zerovector(int numberofelements); // Initializing an array with all of the non moving nodes
 	void set_zero_nodes(int *); // Set the nodes that will not move, this will be done to the LHS and RHIS of the system of equations Ax = b;
 	void set_zero_AxB(void);
+	
+
+	//calculating the von-mises stresses
 	
 };
 
