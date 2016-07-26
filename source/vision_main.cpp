@@ -14,7 +14,7 @@
 #include <fstream>
 //cv includes
 #include "opencv2/highgui.hpp"
-
+#include <math.h>
 #include "opencv2\core.hpp"
 #include "opencv2/videoio.hpp"
 #include "opencv2/imgproc.hpp"
@@ -68,7 +68,8 @@ IKinectSensor* sensor;             // Kinect sensor
 IMultiSourceFrameReader* reader;   // Kinect data source
 CameraIntrinsics cameraIntrinsics_kinect[1];
 ICoordinateMapper* mapper;         // Converts between depth, color, and 3d coordinates
-
+int num_station_nodes = 13;
+int station_nodes[13] = {0,1,2,3,4,5,6,7,8,9,10,11,12};
 //success for camera calibration
 Mat intrinsic = Mat(3, 3, CV_32FC1);
 Mat distCoeffs;
@@ -168,7 +169,7 @@ Size imageSize;
 bool aruco_begin = false;// this means that we have not begun the tracking.
 vector<Point2f> aruco_position;//we have t+1
 vector<Point2f> meshnode_position;//we have t
-
+int node_interested = 338;
 vector<Point2f> diff;//the diff vector for 
 //chessboard markers
 
@@ -234,7 +235,7 @@ void getDepthData(IMultiSourceFrame* frame, GLubyte* dest) {
 	//mapper->MapDepthFrameToCameraSpace(width*height, buf, width*height / 2, depth2xyz_found_different_dim);
 
 	float* fdest = (float*)dest;
-	for (int i = 0; i < sz; i++) {
+	for (unsigned int i = 0; i < sz; i++) {
 
 		*fdest++ = depth2xyz[i].X;
 		*fdest++ = depth2xyz[i].Y;
@@ -258,12 +259,39 @@ void get_mesh(Geometry *p){
 	// global_geo.return_numElems()
 	if (p->get_dynamic()){
 		if (1){
-			p->setSudoNode(100);
-			p->setSudoForcex(diff[0].x / 8.0);
-			p->setSudoForcey(diff[0].y / 8.0);
+			p->setSudoNode(node_interested);
+			p->setSudoForcex(-diff[0].x/600.00);
+			p->setSudoForcey(-diff[0].y / 600.00);
+			/*int sign_x;
+			int sign_y;
+			if (diff[0].x < 0){
+				sign_x = -1;
+			}
+			else if (diff[0].x >= 0){
+				sign_x = 1;
+			}
+			if (diff[0].y < 0){
+				sign_y = -1;
+			}
+			else if (diff[0].y >= 0){
+				sign_y = 1;
+			}
+			
+			p->setSudoForcex(-sign_x*log(sign_x*diff[0].x/1500.0+1));
+			p->setSudoForcey(-sign_y*log(sign_y*diff[0].y /1500.0 + 1));*/
+			/*if (norm(diff[0]) > 30.0){
+				p->initialize_dynamic();
+			}*/
+			
+			/*else{
+				p->setSudoForcex(0.0);
+				p->setSudoForcey(0.0);
+			}*/
+	/*		p->setSudoForcex(1.0);
+			p->setSudoForcey(1.0);*/
 		}
 		else {
-			p->setSudoNode(100);
+			p->setSudoNode(node_interested);
 			p->setSudoForcex(0);
 			p->setSudoForcey(0);
 		}
@@ -294,10 +322,10 @@ void get_mesh(Geometry *p){
 
 		//double dx = (geo_deform[1].x-geo_deform[0].x );
 		if (first_geo_init == true){
-			mesh_geometry.push_back(Point3f(((p->return_x(i)))*1, (p->return_y(i)) , 2.0));
+			mesh_geometry.push_back(Point3f(((p->return_x(i)))*100.0 + 5.0, (p->return_y(i)*100.0), -1.233));
 		}
 		else {
-			mesh_geometry[i] = (Point3f(((p->return_x(i))) , (p->return_y(i)) , 2.0));
+			mesh_geometry[i] = (Point3f(((p->return_x(i)))*100.0 + 5.0, (p->return_y(i)*100.0), -1.233));
 		}
 		
 		
@@ -327,10 +355,10 @@ void draw_mesh(Geometry *p, Mat I){
 		int lineType = 8;
 
 		//GpuMat image1(Size(1902, 1080), CV_8U);
-		
-		line(I, mesh_geometry_display[node_considered1], mesh_geometry_display[node_considered2], Scalar(100, 50, 255), thickness, lineType);
+		Scalar color_line = Scalar(20,255, 200);
+		line(I, mesh_geometry_display[node_considered1], mesh_geometry_display[node_considered2], color_line, thickness, lineType);
 
-		line(I, mesh_geometry_display[node_considered3], mesh_geometry_display[node_considered1], Scalar(100, 50, 255), thickness, lineType);
+		line(I, mesh_geometry_display[node_considered3], mesh_geometry_display[node_considered1], color_line, thickness, lineType);
 		
 		if (p->return_dim() == 3){
 			line(I, mesh_geometry_display[node_considered2], mesh_geometry_display[node_considered4], Scalar(100, 50, 255), thickness, lineType);
@@ -342,27 +370,41 @@ void draw_mesh(Geometry *p, Mat I){
 			
 		}
 		else {
-			line(I, mesh_geometry_display[node_considered2], mesh_geometry_display[node_considered3], Scalar(100, 50, 255), thickness, lineType);
+			line(I, mesh_geometry_display[node_considered2], mesh_geometry_display[node_considered3], color_line, thickness, lineType);
 		}
 		
-		if (node_considered3 == 100){
+		if (node_considered1 == node_interested){
+			meshnode_position.push_back((mesh_geometry_display[node_considered1]));
+			circle(I, mesh_geometry_display[node_considered1], 20, Scalar(0, 100, 255), 4);
+			putText(I, to_string(mesh_geometry_display[node_considered1].x) + "   " + to_string(mesh_geometry_display[node_considered1].y), mesh_geometry_display[node_considered1], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+		}
+		else if (node_considered2 == node_interested){
+			meshnode_position.push_back((mesh_geometry_display[node_considered2]));
+			circle(I, mesh_geometry_display[node_considered2], 20, Scalar(0, 100, 255), 4);
+			putText(I, to_string(mesh_geometry_display[node_considered2].x) + "   " + to_string(mesh_geometry_display[node_considered2].y), mesh_geometry_display[node_considered2], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+
+		}
+		else if (node_considered3 == node_interested){
 			meshnode_position.push_back((mesh_geometry_display[node_considered3]));
 			circle(I, mesh_geometry_display[node_considered3], 20, Scalar(0, 100, 255), 4);
 			putText(I, to_string(mesh_geometry_display[node_considered3].x) + "   " + to_string(mesh_geometry_display[node_considered3].y), mesh_geometry_display[node_considered3], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+
 		}
 		if (1){ // if draw zero u points
 			bool yes = false;
 			int node_yes;
-			for (int m = 0; m < 9; m++){
-				if ((node_considered1 == m)){
+			int dummy_node;
+			for (int m = 0; m < num_station_nodes; m++){
+				dummy_node = station_nodes[m];
+				if ((node_considered1 == dummy_node)){
 					yes = true;
 					node_yes = node_considered1;
 				}
-				else if ((node_considered3 == m)){
+				else if ((node_considered3 == dummy_node)){
 					yes = true;
 					node_yes = node_considered3;
 				}
-				else if (node_considered2 == m){
+				else if (node_considered2 == dummy_node){
 					yes = true;
 					node_yes = node_considered2;
 				}
@@ -375,7 +417,9 @@ void draw_mesh(Geometry *p, Mat I){
 			}
 		}
 		
-		//putText(I, to_string(node_considered2), mesh_geometry_display[node_considered2], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+	//putText(I, to_string(node_considered1), mesh_geometry_display[node_considered1], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+	//	putText(I, to_string(node_considered2), mesh_geometry_display[node_considered2], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+	//	putText(I, to_string(node_considered3), mesh_geometry_display[node_considered3], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
 /*
 		circle(I, mesh_geometry_display[node_considered1], 100 / 32.0, Scalar(200, 100, 80), -1, 1);
 		circle(I, mesh_geometry_display[node_considered2], 100 / 32.0, Scalar(200,100, 80), -1, 1);
@@ -389,9 +433,9 @@ void draw_mesh(Geometry *p, Mat I){
 			circle(I, mesh_geometry_display[node_considered4], 70 / 32.0, Scalar(200, 0, 80), -1, 1);
 		}*/
 
-		circle(I, mesh_geometry_display[node_considered1], 100 / 32.0, Scalar(200, 100, 80), -1, 1);
-		//circle(I, mesh_geometry_display[node_considered2], 100 / 32.0, Scalar(200, 100, 80), -1, 1);
-		//circle(I, mesh_geometry_display[node_considered3], 100 / 32.0, Scalar(200, 100, 80), -1, 1);
+		//circle(I, mesh_geometry_display[node_considered1], 100 / 80.0, Scalar(10, 200, 255), -1, 1);
+		//circle(I, mesh_geometry_display[node_considered2], 100 / 80.0, Scalar(10, 200, 255), -1, 1);
+		//circle(I, mesh_geometry_display[node_considered3], 100 / 80.0, Scalar(10, 200, 255), -1, 1);
 
 	}
 
@@ -557,7 +601,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		//imshow("I_gray_resize", I_gray_resize);
 		/*imwrite(to_string(write_counter) + ".png", I_flipped);
 		write_counter++;*/
-		int numSquares = numCornersHor * numCornersVer;
+		unsigned int numSquares = numCornersHor * numCornersVer;
 		Size board_sz = Size(numCornersHor, numCornersVer);
 		bool found = findChessboardCorners(I_gray_resize, board_sz, corners, CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FILTER_QUADS);
 
@@ -1008,7 +1052,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 					diff.clear();
 					diff.push_back(Point2f(0.0, 0.0));
 				}
-				putText(I, "Force : " + to_string(diff[0].x) + "  " + to_string(diff[0].y), Point2f(50.0, 50.0), 1, 1, Scalar(100, 100, 20));
+				putText(I, "Force : " + to_string(diff[0].x) + "  " + to_string(diff[0].y), Point2f(50.0, 50.0), 2, 3, Scalar(100, 100, 255));
 			}
 			else{ // if there isn't then put sudo force to zero
 				diff.clear();
@@ -1313,7 +1357,7 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	gluLookAt(0, 0, 0, 0, 0, 1, 0, 1, 0);
-	const char **a;
+	//const char **a;
 	
 	/*Geometry testing_geo;
 	testing_geo.set_dim(3);
@@ -1334,9 +1378,9 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 	
 		geo_ptr->set_beta1(0.9); // if beta_2 >= beta1 and beta > 1/2 then the time stepping scheme is unconditionally stable.
 		geo_ptr->set_beta2(0.9);
-		geo_ptr->set_dt(1.5);
-		geo_ptr->set_dynamic_alpha(0.056);//damping
-		geo_ptr->set_dynamic_xi(0.016);//damping
+		geo_ptr->set_dt(0.6);
+		geo_ptr->set_dynamic_alpha(0.90);
+		geo_ptr->set_dynamic_xi(0.70);
 		
 	}
 	diff.push_back(Point2f(0.0, 0.0));
@@ -1347,16 +1391,17 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 
 	
 	//intiliazing the number of points that will not move
-
-	p->initialize_zerovector(9);
+	
+	p->initialize_zerovector(num_station_nodes);
 	//next we set what nodes we want to make stable
-	int points[9];
-	for (int i = 0; i < 9; i++){
+	int points[8];
+	/*for (int i = 0; i < num_station_nodes; i++){
+
 		points[i] = i;
 		
-	}
+	}*/
 	
-	p->set_zero_nodes(points);
+	p->set_zero_nodes(station_nodes);
 
 	////charuco
 	imageSize.width = squaresX * squareLength + 2 * margins;

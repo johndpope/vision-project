@@ -23,7 +23,10 @@
 #include "zinc/sceneviewer.hpp"
 #include "zinc/scene.hpp"
 #include <iostream>
+
+
 using namespace OpenCMISS::Zinc;
+
 
 #define RADIUS          150.0f
 #define STEP_LONGITUDE   22.5f                   /* 22.5 makes 8 bands like original Boing */
@@ -657,6 +660,7 @@ void drawMesh(Geometry *p){
 		int node_considered1 = p->node_number_inElem(i, 0);
 		int node_considered2 = p->node_number_inElem(i, 1);
 		int node_considered3 = p->node_number_inElem(i, 2);
+		//std::cout << " hi" << std::endl;
 		if (p->return_dim() == 3){
 			node_considered4 = p->node_number_inElem(i, 3);
 		}
@@ -847,7 +851,9 @@ int draw_things(Geometry *p)
 	glfwMakeContextCurrent(window);
 
 	glfwPollEvents();
-
+	int num_station_nodes = 7;
+	int station_nodes[7] = { 0, 1, 2, 3, 4, 5, 6 };
+	//int station_nodes[7] = { 0, 2, 3, 40, 5, 6, 1 };
 	///-cmiss
 	double duration_K;
 	bool cuda_init = false;
@@ -860,15 +866,24 @@ int draw_things(Geometry *p)
 	p->set_dt(0.05);
 	p->set_dynamic_alpha(0.2);
 	p->set_dynamic_xi(0.23);
-	p->initialize_zerovector(9);
+	p->initialize_zerovector(7);
 	//next we set what nodes we want to make stable
 	int points[9];
 	for (int i = 0; i < 9; i++){
 		points[i] = i;
 
 	}
-
-	p->set_zero_nodes(points);
+	p->set_density(1000.0);
+	p->set_zero_nodes(station_nodes);
+	int numNodes = p->return_numNodes();
+	std::string cuda_string;
+	if (p->get_cuda_use() == true){
+		cuda_string = "cuda_used";
+	}
+	else if (p->get_cuda_use() == false){
+		cuda_string = "cuda_unused";
+	}
+	std::ofstream time_out(cuda_string +"_"+ std::to_string(numNodes) + ".txt");
 	if (!p->get_dynamic()){
 		for (;;){
 
@@ -974,8 +989,8 @@ int draw_things(Geometry *p)
 
 			//Solve the 2D FEM in each frame
 			p->setSudoNode(200);
-			p->setSudoForcex( 6.0);
-			p->setSudoForcey( 6.0);
+			p->setSudoForcex(0.01);
+			p->setSudoForcey( 0.01);
 			
 			/*if (p->return_dim() == 3){
 				p->Linear3DBarycentric_B_CUDA_host();
@@ -983,20 +998,20 @@ int draw_things(Geometry *p)
 */
 
 			p->make_K_matrix();
-
+			//p->Linear2DBarycentric_B_CUDA_host();
 			//p->make_surface_f();
 
 
 
 			if (!cuda_init){
-				p->initialize_CUDA();
-				cuda_init = true;
+				//p->initialize_CUDA();
+				//cuda_init = true;
 			}
 		
 			p->tt();
 			duration_K = (std::clock() - start_K) / (double)CLOCKS_PER_SEC;
 
-
+			time_out << duration_K<<std::endl;
 			//std::cout << " change status : " << changeNode << std::endl;
 
 			std::cout << "Solver time ms:  " << duration_K << std::endl;
@@ -1010,12 +1025,12 @@ int draw_things(Geometry *p)
 	else{
 		for (;;){
 			if (display_counter < 1){
-				p->setSudoNode(900);
-				p->setSudoForcex(3000.0);
-				p->setSudoForcey(2000.0);
+				p->setSudoNode(100);
+				p->setSudoForcex(1.0);
+				p->setSudoForcey(1.0);
 			}
 			else {
-				p->setSudoNode(120);
+				p->setSudoNode(6);
 				p->setSudoForcex(0);
 				p->setSudoForcey(0);
 			}
@@ -1039,6 +1054,7 @@ int draw_things(Geometry *p)
 			//display();
 			//DrawGrid();
 			drawMesh(p);
+			
 			glPopMatrix();
 			glFlush();
 			/* Swap buffers */
@@ -1048,10 +1064,11 @@ int draw_things(Geometry *p)
 			///dynamic calculations
 		
 			p->make_K_matrix();
-			
+			//p->Linear2DBarycentric_B_CUDA_host();
 			p->find_b();
 			std::clock_t start_K;
 			start_K = std::clock();
+			
 			p->update_vector();
 			duration_K = (std::clock() - start_K) / (double)CLOCKS_PER_SEC;
 			std::cout << "Solver time ms:  " << duration_K << std::endl;

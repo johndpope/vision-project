@@ -24,11 +24,12 @@ int main(void){
 	testing_geo.read_nodes();
 	testing_geo.read_elem();
 	testing_geo.read_force();
-	testing_geo.set_YoungPoisson(200000.0, 0.399);
-	testing_geo.set_thickness(0.1);
+	testing_geo.set_YoungPoisson(30000.0, 0.49);
+	testing_geo.set_thickness(53.0/100.0);
 	testing_geo.initilizeMatrices();
 	testing_geo.initialize_CUDA();
-	testing_geo.set_dynamic(true);
+	testing_geo.set_dynamic(false);
+	testing_geo.set_cuda_use(true);
     //kinect_main(0, NULL,&testing_geo);
 	
 	 //maain(0, NULL);

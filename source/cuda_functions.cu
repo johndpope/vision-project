@@ -67,8 +67,124 @@ __device__ inline float atomicAdda(float* address, double value)
 
 };
 
+////this one as M+K
+//__global__ void make_K_cuda2d(double *K, 
+//	int *nodesInElem, //a vector containing all of the element nodes,
+//	double *x_vector,  //all x position
+//	double *y_vector,  //all y position
+//	int *displaceInElem_device, // all of the DOF in an element 
+//	float *d_A_dense,  //we want to fill this vector up with the LHS of the dynamics equation
+//	int numnodes, //The number of nodes in our problem
+//	double thickness, //The thickness of the plane stress geometry
+//	double young_E, //The young's modulus
+//	double nu, //Poisson's ratio
+//	double alpha, //The alpha constant
+//	double beta1, //Beta 1 for Hans Hilber's scheme
+//	double beta2, //Beta 2 for Hans Hilber's scheme
+//	double rho, //The density 
+//	double dt,//Change in time 
+//	double xi// xi for damping
+//
+//	) 
+//{
+//	int row;
+//	int dummy_node;
+//	int loop_node;
+//	int dummy_row;
+//	int dummy_col;
+//	int DOF[6];
+//	int counter;
+//	int offset = threadIdx.x + blockIdx.x*blockDim.x; // offset will essentaillay be the element counter
+//
+//
+//		double y23 = y_vector[nodesInElem[nodesinelemX(1, offset, 3)]] - y_vector[nodesInElem[nodesinelemX(2, offset, 3)]];//y23
+//	double y31 = y_vector[nodesInElem[nodesinelemX(2, offset, 3)]] - y_vector[nodesInElem[nodesinelemX(0, offset, 3)]];//y31
+//	double y13 = y31;
+//	double y12 = y_vector[nodesInElem[nodesinelemX(0, offset, 3)]] - y_vector[nodesInElem[nodesinelemX(1, offset, 3)]];//y12
+//	double x32 = x_vector[nodesInElem[nodesinelemX(2, offset, 3)]] - x_vector[nodesInElem[nodesinelemX(1, offset, 3)]];//x32
+//	double x23 = x32;
+//	double x13 = x_vector[nodesInElem[nodesinelemX(0, offset, 3)]] - x_vector[nodesInElem[nodesinelemX(2, offset, 3)]];//x13
+//	double x21 = x_vector[nodesInElem[nodesinelemX(1, offset, 3)]] - x_vector[nodesInElem[nodesinelemX(0, offset, 3)]];//x21
+//	double det_J = x13*y23 - y13*x23;
+//	K[36 * offset + 0] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*((x32*x32)*(-0.5*nu + 0.5) / (det_J*det_J) + 1.0*(y23*y23) / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(0.333333333333333*alpha*beta1*dt*thickness + 0.333333333333333*thickness);
+//	K[36 * offset + 1] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(nu*x32*y23 / (det_J*det_J) + x32*y23*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
+//	K[36 * offset + 2] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(x13*x32*(-0.5*nu + 0.5) / (det_J*det_J) + 1.0*y23*y31 / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(0.25*alpha*beta1*dt*thickness + 0.25*thickness);
+//	K[36 * offset + 3] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(nu*x13*y23 / (det_J*det_J) + x32*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
+//	K[36 * offset + 4] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(x21*x32*(-0.5*nu + 0.5) / (det_J*det_J) + 1.0*y12*y23 / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(-0.0833333333333333*alpha*beta1*dt*thickness - 0.0833333333333333*thickness);
+//	K[36 * offset + 5] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(nu*x21*y23 / (det_J*det_J) + x32*y12*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
+//	K[36 * offset + 6] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(nu*x32*y23 / (det_J*det_J) + x32*y23*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
+//	K[36 * offset + 7] = thickness*young_E*(1.0*(x32*x32) / (det_J*det_J) + (y23*y23)*(-0.5*nu + 0.5) / (det_J*det_J))*(beta1*dt*xi + 0.5*beta2*(dt*dt)) / (-(nu*nu) + 1.0) + det_J*rho*(0.333333333333333*alpha*beta1*dt*thickness + 0.333333333333333*thickness);
+//	K[36 * offset + 8] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(nu*x32*y31 / (det_J*det_J) + x13*y23*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
+//	K[36 * offset + 9] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(1.0*x13*x32 / (det_J*det_J) + y23*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(0.25*alpha*beta1*dt*thickness + 0.25*thickness);
+//	K[36 * offset + 10] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(nu*x32*y12 / (det_J*det_J) + x21*y23*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
+//	K[36 * offset + 11] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(1.0*x21*x32 / (det_J*det_J) + y12*y23*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(-0.0833333333333333*alpha*beta1*dt*thickness - 0.0833333333333333*thickness);
+//	K[36 * offset + 12] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(x13*x32*(-0.5*nu + 0.5) / (det_J*det_J) + 1.0*y23*y31 / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(0.25*alpha*beta1*dt*thickness + 0.25*thickness);
+//	K[36 * offset + 13] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(nu*x32*y31 / (det_J*det_J) + x13*y23*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
+//	K[36 * offset + 14] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*((x13*x32)*(-0.5*nu + 0.5) / (det_J*det_J) + 1.0*(y31*y31) / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(0.333333333333333*alpha*beta1*dt*thickness + 0.333333333333333*thickness);
+//	K[36 * offset + 15] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(nu*x13*y31 / (det_J*det_J) + x13*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
+//	K[36 * offset + 16] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(x13*x21*(-0.5*nu + 0.5) / (det_J*det_J) + 1.0*y12*y31 / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(-0.0833333333333333*alpha*beta1*dt*thickness - 0.0833333333333333*thickness);
+//	K[36 * offset + 17] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(nu*x21*y31 / (det_J*det_J) + x13*y12*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
+//	K[36 * offset + 18] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(nu*x13*y23 / (det_J*det_J) + x32*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
+//	K[36 * offset + 19] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(1.0*x13*x32 / (det_J*det_J) + y23*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(0.25*alpha*beta1*dt*thickness + 0.25*thickness);
+//	K[36 * offset + 20] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(nu*x13*y31 / (det_J*det_J) + x13*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
+//	K[36 * offset + 21] = thickness*young_E*(1.0*(x13*x32) / (det_J*det_J) + (y31*y31)*(-0.5*nu + 0.5) / (det_J*det_J))*(beta1*dt*xi + 0.5*beta2*(dt*dt)) / (-(nu*nu) + 1.0) + det_J*rho*(0.333333333333333*alpha*beta1*dt*thickness + 0.333333333333333*thickness);
+//	K[36 * offset + 22] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(nu*x13*y12 / (det_J*det_J) + x21*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
+//	K[36 * offset + 23] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(1.0*x13*x21 / (det_J*det_J) + y12*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(-0.0833333333333333*alpha*beta1*dt*thickness - 0.0833333333333333*thickness);
+//	K[36 * offset + 24] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(x21*x32*(-0.5*nu + 0.5) / (det_J*det_J) + 1.0*y12*y23 / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(-0.0833333333333333*alpha*beta1*dt*thickness - 0.0833333333333333*thickness);
+//	K[36 * offset + 25] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(nu*x32*y12 / (det_J*det_J) + x21*y23*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
+//	K[36 * offset + 26] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(x13*x21*(-0.5*nu + 0.5) / (det_J*det_J) + 1.0*y12*y31 / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(-0.0833333333333333*alpha*beta1*dt*thickness - 0.0833333333333333*thickness);
+//	K[36 * offset + 27] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(nu*x13*y12 / (det_J*det_J) + x21*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
+//	K[36 * offset + 28] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*((x21*x32)*(-0.5*nu + 0.5) / (det_J*det_J) + 1.0*(y12*y12) / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(0.166666666666667*alpha*beta1*dt*thickness + 0.166666666666667*thickness);
+//	K[36 * offset + 29] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(nu*x21*y12 / (det_J*det_J) + x21*y12*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
+//	K[36 * offset + 30] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(nu*x21*y23 / (det_J*det_J) + x32*y12*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
+//	K[36 * offset + 31] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(1.0*x21*x32 / (det_J*det_J) + y12*y23*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(-0.0833333333333333*alpha*beta1*dt*thickness - 0.0833333333333333*thickness);
+//	K[36 * offset + 32] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(nu*x21*y31 / (det_J*det_J) + x13*y12*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
+//	K[36 * offset + 33] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(1.0*x13*x21 / (det_J*det_J) + y12*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(-0.0833333333333333*alpha*beta1*dt*thickness - 0.0833333333333333*thickness);
+//	K[36 * offset + 34] = thickness*young_E*(beta1*dt*xi + 0.5*beta2*(dt*dt))*(nu*x21*y12 / (det_J*det_J) + x21*y12*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
+//	K[36 * offset + 35] = thickness*young_E*(1.0*(x21*x32) / (det_J*det_J) + (y12*y12)*(-0.5*nu + 0.5) / (det_J*det_J))*(beta1*dt*xi + 0.5*beta2*(dt*dt)) / (-(nu*nu) + 1.0) + det_J*rho*(0.166666666666667*alpha*beta1*dt*thickness + 0.166666666666667*thickness);
+//	counter = 0;
+//	//The two loops are responsible for finding the DOF (or q_i) for each element
+//	for (int npe = 0; npe < 3; npe++){
+//		dummy_node = nodesInElem[nodesinelemX(npe, offset, 3)]; // The row of the matrix we looking at will be k_th element and npe (nodes per element) 	
+//		for (int dof = 0; dof < 2; dof++){
+//
+//			DOF[counter] = displaceInElem_device[nodesDisplacementX(dof, dummy_node, 2)];
+//			counter++;
+//		}
+//	}
+//
+//	//we will use atomic add because we will be writting to a single location multiple times (perhaps) 
+//	for (int c = 0; c < 6; c++){
+//		for (int r = 0; r < 6; r++){
+//
+//			//d_A_dense[IDX2C(DOF[c], DOF[r], 3000)] = d_A_dense[IDX2C(DOF[c], DOF[r], 3000)] + E_vector[offset * 144 + c*12+r];
+//			//atomicAdda(&(d_A_dense[IDX2C(0, 0, 2 * numnodes)]), K[offset * 36 + c * 6 + r]);
+//			atomicAdda(&(d_A_dense[IDX2C(DOF[c], DOF[r], 2 * numnodes)]), K[offset * 36 + c * 6 + r]);
+//			//IDX2C(DOF[c], DOF[r], 3000)
+//			//K[IDX2C(DOF[r], DOF[c], numP*dim)] = K[IDX2C(DOF[r], DOF[c], numP*dim)] + E[k][r][c];
+//		}
+//	}
+//}
 
-__global__ void make_K_cuda2d(double *K, int *nodesInElem, double *x_vector, double *y_vector, double d, int *displaceInElem_device, float *d_A_dense, int numnodes,double thickness,double young_E,double nu,double alpha,double beta1,double beta2,double rho,double dt) {
+__global__ void make_K_cuda2d(double *K,
+	int *nodesInElem, //a vector containing all of the element nodes,
+	double *x_vector,  //all x position
+	double *y_vector,  //all y position
+	int *displaceInElem_device, // all of the DOF in an element 
+	float *d_A_dense,  //we want to fill this vector up with the LHS of the dynamics equation
+	int numnodes, //The number of nodes in our problem
+	double thickness, //The thickness of the plane stress geometry
+	double young_E, //The young's modulus
+	double nu, //Poisson's ratio
+	double alpha, //The alpha constant
+	double beta1, //Beta 1 for Hans Hilber's scheme
+	double beta2, //Beta 2 for Hans Hilber's scheme
+	double rho, //The density 
+	double dt,//Change in time 
+	double xi,// xi for damping
+	int numE//number of elements
+	)
+{
 	int row;
 	int dummy_node;
 	int loop_node;
@@ -77,72 +193,192 @@ __global__ void make_K_cuda2d(double *K, int *nodesInElem, double *x_vector, dou
 	int DOF[6];
 	int counter;
 	int offset = threadIdx.x + blockIdx.x*blockDim.x; // offset will essentaillay be the element counter
-
-
+	int offset_y = threadIdx.y + blockIdx.y*blockDim.y;
+	if (offset < numE){
 		double y23 = y_vector[nodesInElem[nodesinelemX(1, offset, 3)]] - y_vector[nodesInElem[nodesinelemX(2, offset, 3)]];//y23
-	double y31 = y_vector[nodesInElem[nodesinelemX(2, offset, 3)]] - y_vector[nodesInElem[nodesinelemX(0, offset, 3)]];//y31
-	double y13 = y31;
-	double y12 = y_vector[nodesInElem[nodesinelemX(0, offset, 3)]] - y_vector[nodesInElem[nodesinelemX(1, offset, 3)]];//y12
-	double x32 = x_vector[nodesInElem[nodesinelemX(2, offset, 3)]] - x_vector[nodesInElem[nodesinelemX(1, offset, 3)]];//x32
-	double x23 = x32;
-	double x13 = x_vector[nodesInElem[nodesinelemX(0, offset, 3)]] - x_vector[nodesInElem[nodesinelemX(2, offset, 3)]];//x13
-	double x21 = x_vector[nodesInElem[nodesinelemX(1, offset, 3)]] - x_vector[nodesInElem[nodesinelemX(0, offset, 3)]];//x21
-	double det_J = x13*y23 - y13*x23;
-	K[36 * offset + 0] = thickness*young_E*(alpha*beta1*dt + 1)*((x32*x32)*(-0.5*nu + 0.5) / (det_J*det_J) + 1.0*(y23*y23) / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(0.333333333333333*alpha*beta1*dt*thickness + 0.333333333333333*thickness);
-	K[36 * offset + 1] = thickness*young_E*(alpha*beta1*dt + 1)*(nu*x32*y23 / (det_J*det_J) + x32*y23*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
-	K[36 * offset + 2] = thickness*young_E*(alpha*beta1*dt + 1)*(x13*x32*(-0.5*nu + 0.5) / (det_J*det_J) + 1.0*y23*y31 / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(0.25*alpha*beta1*dt*thickness + 0.25*thickness);
-	K[36 * offset + 3] = thickness*young_E*(alpha*beta1*dt + 1)*(nu*x13*y23 / (det_J*det_J) + x32*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
-	K[36 * offset + 4] = thickness*young_E*(alpha*beta1*dt + 1)*(x21*x32*(-0.5*nu + 0.5) / (det_J*det_J) + 1.0*y12*y23 / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(-0.0833333333333333*alpha*beta1*dt*thickness - 0.0833333333333333*thickness);
-	K[36 * offset + 5] = thickness*young_E*(alpha*beta1*dt + 1)*(nu*x21*y23 / (det_J*det_J) + x32*y12*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
-	K[36 * offset + 6] = thickness*young_E*(alpha*beta1*dt + 1)*(nu*x32*y23 / (det_J*det_J) + x32*y23*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
-	K[36 * offset + 7] = thickness*young_E*(1.0*(x32*x32) / (det_J*det_J) + (y23*y23)*(-0.5*nu + 0.5) / (det_J*det_J))*(alpha*beta1*dt + 1) / (-(nu*nu) + 1.0) + det_J*rho*(0.333333333333333*alpha*beta1*dt*thickness + 0.333333333333333*thickness);
-	K[36 * offset + 8] = thickness*young_E*(alpha*beta1*dt + 1)*(nu*x32*y31 / (det_J*det_J) + x13*y23*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
-	K[36 * offset + 9] = thickness*young_E*(alpha*beta1*dt + 1)*(1.0*x13*x32 / (det_J*det_J) + y23*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(0.25*alpha*beta1*dt*thickness + 0.25*thickness);
-	K[36 * offset + 10] = thickness*young_E*(alpha*beta1*dt + 1)*(nu*x32*y12 / (det_J*det_J) + x21*y23*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
-	K[36 * offset + 11] = thickness*young_E*(alpha*beta1*dt + 1)*(1.0*x21*x32 / (det_J*det_J) + y12*y23*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(-0.0833333333333333*alpha*beta1*dt*thickness - 0.0833333333333333*thickness);
-	K[36 * offset + 12] = thickness*young_E*(alpha*beta1*dt + 1)*(x13*x32*(-0.5*nu + 0.5) / (det_J*det_J) + 1.0*y23*y31 / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(0.25*alpha*beta1*dt*thickness + 0.25*thickness);
-	K[36 * offset + 13] = thickness*young_E*(alpha*beta1*dt + 1)*(nu*x32*y31 / (det_J*det_J) + x13*y23*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
-	K[36 * offset + 14] = thickness*young_E*(alpha*beta1*dt + 1)*((x13*x32)*(-0.5*nu + 0.5) / (det_J*det_J) + 1.0*(y31*y31) / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(0.333333333333333*alpha*beta1*dt*thickness + 0.333333333333333*thickness);
-	K[36 * offset + 15] = thickness*young_E*(alpha*beta1*dt + 1)*(nu*x13*y31 / (det_J*det_J) + x13*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
-	K[36 * offset + 16] = thickness*young_E*(alpha*beta1*dt + 1)*(x13*x21*(-0.5*nu + 0.5) / (det_J*det_J) + 1.0*y12*y31 / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(-0.0833333333333333*alpha*beta1*dt*thickness - 0.0833333333333333*thickness);
-	K[36 * offset + 17] = thickness*young_E*(alpha*beta1*dt + 1)*(nu*x21*y31 / (det_J*det_J) + x13*y12*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
-	K[36 * offset + 18] = thickness*young_E*(alpha*beta1*dt + 1)*(nu*x13*y23 / (det_J*det_J) + x32*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
-	K[36 * offset + 19] = thickness*young_E*(alpha*beta1*dt + 1)*(1.0*x13*x32 / (det_J*det_J) + y23*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(0.25*alpha*beta1*dt*thickness + 0.25*thickness);
-	K[36 * offset + 20] = thickness*young_E*(alpha*beta1*dt + 1)*(nu*x13*y31 / (det_J*det_J) + x13*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
-	K[36 * offset + 21] = thickness*young_E*(1.0*(x13*x32) / (det_J*det_J) + (y31*y31)*(-0.5*nu + 0.5) / (det_J*det_J))*(alpha*beta1*dt + 1) / (-(nu*nu) + 1.0) + det_J*rho*(0.333333333333333*alpha*beta1*dt*thickness + 0.333333333333333*thickness);
-	K[36 * offset + 22] = thickness*young_E*(alpha*beta1*dt + 1)*(nu*x13*y12 / (det_J*det_J) + x21*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
-	K[36 * offset + 23] = thickness*young_E*(alpha*beta1*dt + 1)*(1.0*x13*x21 / (det_J*det_J) + y12*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(-0.0833333333333333*alpha*beta1*dt*thickness - 0.0833333333333333*thickness);
-	K[36 * offset + 24] = thickness*young_E*(alpha*beta1*dt + 1)*(x21*x32*(-0.5*nu + 0.5) / (det_J*det_J) + 1.0*y12*y23 / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(-0.0833333333333333*alpha*beta1*dt*thickness - 0.0833333333333333*thickness);
-	K[36 * offset + 25] = thickness*young_E*(alpha*beta1*dt + 1)*(nu*x32*y12 / (det_J*det_J) + x21*y23*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
-	K[36 * offset + 26] = thickness*young_E*(alpha*beta1*dt + 1)*(x13*x21*(-0.5*nu + 0.5) / (det_J*det_J) + 1.0*y12*y31 / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(-0.0833333333333333*alpha*beta1*dt*thickness - 0.0833333333333333*thickness);
-	K[36 * offset + 27] = thickness*young_E*(alpha*beta1*dt + 1)*(nu*x13*y12 / (det_J*det_J) + x21*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
-	K[36 * offset + 28] = thickness*young_E*(alpha*beta1*dt + 1)*((x21*x32)*(-0.5*nu + 0.5) / (det_J*det_J) + 1.0*(y12*y12) / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(0.166666666666667*alpha*beta1*dt*thickness + 0.166666666666667*thickness);
-	K[36 * offset + 29] = thickness*young_E*(alpha*beta1*dt + 1)*(nu*x21*y12 / (det_J*det_J) + x21*y12*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
-	K[36 * offset + 30] = thickness*young_E*(alpha*beta1*dt + 1)*(nu*x21*y23 / (det_J*det_J) + x32*y12*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
-	K[36 * offset + 31] = thickness*young_E*(alpha*beta1*dt + 1)*(1.0*x21*x32 / (det_J*det_J) + y12*y23*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(-0.0833333333333333*alpha*beta1*dt*thickness - 0.0833333333333333*thickness);
-	K[36 * offset + 32] = thickness*young_E*(alpha*beta1*dt + 1)*(nu*x21*y31 / (det_J*det_J) + x13*y12*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
-	K[36 * offset + 33] = thickness*young_E*(alpha*beta1*dt + 1)*(1.0*x13*x21 / (det_J*det_J) + y12*y31*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + det_J*rho*(-0.0833333333333333*alpha*beta1*dt*thickness - 0.0833333333333333*thickness);
-	K[36 * offset + 34] = thickness*young_E*(alpha*beta1*dt + 1)*(nu*x21*y12 / (det_J*det_J) + x21*y12*(-0.5*nu + 0.5) / (det_J*det_J)) / (-(nu*nu) + 1.0) + 0;
-	K[36 * offset + 35] = thickness*young_E*(1.0*(x21*x32) / (det_J*det_J) + (y12*y12)*(-0.5*nu + 0.5) / (det_J*det_J))*(alpha*beta1*dt + 1) / (-(nu*nu) + 1.0) + det_J*rho*(0.166666666666667*alpha*beta1*dt*thickness + 0.166666666666667*thickness);
-	counter = 0;
-	//The two loops are responsible for finding the DOF (or q_i) for each element
-	for (int npe = 0; npe < 3; npe++){
-		dummy_node = nodesInElem[nodesinelemX(npe, offset, 3)]; // The row of the matrix we looking at will be k_th element and npe (nodes per element) 	
-		for (int dof = 0; dof < 2; dof++){
+		double y31 = y_vector[nodesInElem[nodesinelemX(2, offset, 3)]] - y_vector[nodesInElem[nodesinelemX(0, offset, 3)]];//y31
+		double y13 = y31;
+		double y12 = y_vector[nodesInElem[nodesinelemX(0, offset, 3)]] - y_vector[nodesInElem[nodesinelemX(1, offset, 3)]];//y12
+		double x32 = x_vector[nodesInElem[nodesinelemX(2, offset, 3)]] - x_vector[nodesInElem[nodesinelemX(1, offset, 3)]];//x32
+		double x23 = x32;
+		double x13 = x_vector[nodesInElem[nodesinelemX(0, offset, 3)]] - x_vector[nodesInElem[nodesinelemX(2, offset, 3)]];//x13
+		double x21 = x_vector[nodesInElem[nodesinelemX(1, offset, 3)]] - x_vector[nodesInElem[nodesinelemX(0, offset, 3)]];//x21
+		double det_J = x13*y23 - y13*x23;
+#if 1
+		K[36 * offset + 0] = det_J*rho*thickness / 3;
+		K[36 * offset + 1] = 0.0;
+		K[36 * offset + 2] = det_J*rho*thickness / 4;
+		K[36 * offset + 3] = 0.0;
+		K[36 * offset + 4] = -det_J*rho*thickness / 12;
+		K[36 * offset + 5] = 0;
+		K[36 * offset + 6] = 0;
+		K[36 * offset + 7] = det_J*rho*thickness / 3;
+		K[36 * offset + 8] = 0;
+		K[36 * offset + 9] = det_J*rho*thickness / 4;
+		K[36 * offset + 10] = 0;
+		K[36 * offset + 11] = -det_J*rho*thickness / 12;
+		K[36 * offset + 12] = det_J*rho*thickness / 4;
+		K[36 * offset + 13] = 0;
+		K[36 * offset + 14] = det_J*rho*thickness / 3;
+		K[36 * offset + 15] = 0;
+		K[36 * offset + 16] = -det_J*rho*thickness / 12;
+		K[36 * offset + 17] = 0;
+		K[36 * offset + 18] = 0;
+		K[36 * offset + 19] = det_J*rho*thickness / 4;
+		K[36 * offset + 20] = 0;
+		K[36 * offset + 21] = det_J*rho*thickness / 3;
+		K[36 * offset + 22] = 0;
+		K[36 * offset + 23] = -det_J*rho*thickness / 12;
+		K[36 * offset + 24] = -det_J*rho*thickness / 12;
+		K[36 * offset + 25] = 0;
+		K[36 * offset + 26] = -det_J*rho*thickness / 12;
+		K[36 * offset + 27] = 0;
 
-			DOF[counter] = displaceInElem_device[nodesDisplacementX(dof, dummy_node, 3)];
-			counter++;
-		}
+		K[36 * offset + 28] = det_J*rho*thickness / 6;
+		K[36 * offset + 29] = 0;
+		K[36 * offset + 30] = 0;
+		K[36 * offset + 31] = -det_J*rho*thickness / 12;
+		K[36 * offset + 32] = 0;
+		K[36 * offset + 33] = -det_J*rho*thickness / 12;
+		K[36 * offset + 34] = 0;
+		K[36 * offset + 35] = det_J*rho*thickness / 6;	counter = 0;
+#endif // 0
+
+	
+#if 0
+		if (offset_y == 0){
+			K[36 * offset + 0] = det_J*rho*thickness / 3;
 	}
+		else if (offset_y == 1){
+			K[36 * offset + 1] = 0;
+		}
+		else if (offset_y == 2){
+			K[36 * offset + 2] = det_J*rho*thickness / 4;
+		}
+		else if (offset_y == 3){
+			K[36 * offset + 3] = 0;
+		}
+		else if (offset_y == 4){
+			K[36 * offset + 4] = -det_J*rho*thickness / 12;
+		}
+		else if (offset_y == 5){
+			K[36 * offset + 5] = 0;
+		}
+		else if (offset_y == 6){
+			K[36 * offset + 6] = 0;
+		}
+		else if (offset_y == 7){
+			K[36 * offset + 7] = det_J*rho*thickness / 3;
+		}
+		else if (offset_y == 8){
+			K[36 * offset + 8] = 0;
+		}
+		else if (offset_y == 9){
+			K[36 * offset + 9] = det_J*rho*thickness / 4;
+		}
+		else if (offset_y == 10){
+			K[36 * offset + 10] = 0;
+		}
+		else if (offset_y == 11){
+			K[36 * offset + 11] = -det_J*rho*thickness / 12;
+		}
+		else if (offset_y == 12){
+			K[36 * offset + 12] = det_J*rho*thickness / 4;
+		}
+		else if (offset_y == 13){
+			K[36 * offset + 13] = 0;
+		}
+		else if (offset_y == 14){
+			K[36 * offset + 14] = det_J*rho*thickness / 3;
+		}
+		else if (offset_y == 15){
+			K[36 * offset + 15] = 0;
+		}
+		else if (offset_y == 16){
+			K[36 * offset + 16] = -det_J*rho*thickness / 12;
+		}
+		else if (offset_y == 17){
+			K[36 * offset + 17] = 0;
+		}
+		else if (offset_y == 18){
+			K[36 * offset + 18] = 0;
+		}
+		else if (offset_y == 19){
+			K[36 * offset + 19] = det_J*rho*thickness / 4;
+		}
+		else if (offset_y == 20){
+			K[36 * offset + 20] = 0;
+		}
+		else if (offset_y == 21){
+			K[36 * offset + 21] = det_J*rho*thickness / 3;
+		}
+		else if (offset_y == 22){
+			K[36 * offset + 22] = 0;
+		}
+		else if (offset_y == 23){
+			K[36 * offset + 23] = -det_J*rho*thickness / 12;
+		}
+		else if (offset_y == 24){
+			K[36 * offset + 24] = -det_J*rho*thickness / 12;
+		}
+		else if (offset_y == 25){
+			K[36 * offset + 25] = 0;
+		}
+		else if (offset_y == 26){
+			K[36 * offset + 26] = -det_J*rho*thickness / 12;
+		}
+		else if (offset_y == 27){
+			K[36 * offset + 27] = 0;
+		}
+		else if (offset_y == 28){
+			K[36 * offset + 28] = det_J*rho*thickness / 6;
+		}
+		else if (offset_y == 29){
+			K[36 * offset + 29] = 0;
+		}
+		else if (offset_y == 30){
+			K[36 * offset + 30] = 0;
+		}
+		else if (offset_y == 31){
+			K[36 * offset + 31] = -det_J*rho*thickness / 12;
+		}
+		else if (offset_y == 32){
+			K[36 * offset + 32] = 0;
+		}
+		else if (offset_y == 33){
+			K[36 * offset + 33] = -det_J*rho*thickness / 12;
+		}
+		else if (offset_y == 34){
+			K[36 * offset + 34] = 0;
+		}
+		else if (offset_y == 35){
+			K[36 * offset + 35] = det_J*rho*thickness / 6;
+		}
+		__syncthreads();
+#endif // 0
 
-	//we will use atomic add because we will be writting to a single location multiple times (perhaps) 
-	for (int c = 0; c < 6; c++){
-		for (int r = 0; r < 6; r++){
+	
+		//The two loops are responsible for finding the DOF (or q_i) for each element
+		for (int npe = 0; npe < 3; npe++){
+			dummy_node = nodesInElem[nodesinelemX(npe, offset, 3)]; // The row of the matrix we looking at will be k_th element and npe (nodes per element) 	
+			for (int dof = 0; dof < 2; dof++){
 
-			//d_A_dense[IDX2C(DOF[c], DOF[r], 3000)] = d_A_dense[IDX2C(DOF[c], DOF[r], 3000)] + E_vector[offset * 144 + c*12+r];
-			atomicAdda(&(d_A_dense[IDX2C(DOF[c], DOF[r], 2 * numnodes)]), K[offset * 36 + c * 6 + r]);
-			//IDX2C(DOF[c], DOF[r], 3000)
-			//K[IDX2C(DOF[r], DOF[c], numP*dim)] = K[IDX2C(DOF[r], DOF[c], numP*dim)] + E[k][r][c];
+				DOF[counter] = displaceInElem_device[nodesDisplacementX(dof, dummy_node, 2)];
+				counter++;
+			}
+		}
+		//d_A_dense[0] = 0.0;
+		//we will use atomic add because we will be writting to a single location multiple times (perhaps) 
+		for (int c = 0; c < 6; c++){
+			for (int r = 0; r < 6; r++){
+
+				//d_A_dense[IDX2C(DOF[c], DOF[r], 3000)] = d_A_dense[IDX2C(DOF[c], DOF[r], 3000)] + E_vector[offset * 144 + c*12+r];
+				//atomicAdda(&(d_A_dense[IDX2C(0, 0, 2 * numnodes)]), K[offset * 36 + c * 6 + r]);
+				atomicAdda(&(d_A_dense[IDX2C(DOF[c], DOF[r], 2 * numnodes)]), K[offset * 36 + c * 6 + r]);
+				//atomicAdda(&(d_A_dense[IDX2C(DOF[c], DOF[r], 2 * numnodes)]), -1.0);
+				//IDX2C(DOF[c], DOF[r], 3000)
+				//K[IDX2C(DOF[r], DOF[c], numP*dim)] = K[IDX2C(DOF[r], DOF[c], numP*dim)] + E[k][r][c];
+			}
 		}
 	}
 }
@@ -157,6 +393,7 @@ __global__ void make_K_cuda3d(double *E_vector, int *nodesInElem, double *x_vect
 	int DOF[12];
 	int counter;
 	int offset = threadIdx.x + blockIdx.x*blockDim.x; // offset will essentaillay be the element counter
+	//int y_offset = threadIdx.y + blockIdx.y*blockDim.y;
 	int max_limit = 12 * 12 * 4374;
 	double E = 200000;
 	double nu = 0.45;

@@ -35,6 +35,7 @@ class Geometry{
 	//Material properties
 	double Young, Poisson;
 	double thickness;
+	double density;
 
 	//Nodes
 	int numNodes;
@@ -135,6 +136,9 @@ class Geometry{
 	int *vector_zero_nodes = NULL;
 	int numNodesZero;
 
+	//CUDA USE BOOL
+	bool cuda_use = false;
+
 	
 public:
 	Geometry();
@@ -148,14 +152,18 @@ public:
 	void set_dim(int dim_input){ dim = dim_input; std::cout << "Dimension is: " << dim; };
 	void set_YoungPoisson(double Young_input, double Poisson_input){ Young = Young_input; Poisson = Poisson_input; std::cout << "Young: " <<Young<<"  Poisson:" << Poisson<<std::endl; };
 	void set_thickness(double thickness_input){ thickness = thickness_input; std::cout << "Thickness is: " << thickness << std::endl; };
-	
-	int return_numNodes(){ return numNodes; };
-	int return_numElems(){ return numE; };
-	int return_dim(){ return dim; };
-	double return_x(int pos){ return x[pos]; };
-	double return_y(int pos){ return y[pos]; };
-	double return_z(int pos){ return z[pos]; };
-	double node_number_inElem(int El_num, int node_num){ return nodesInElem[El_num][node_num]; };
+	void set_density(double density_input){ density = density_input; };
+
+
+	int return_numNodes(){ return numNodes; }
+	int return_numElems(){ return numE; }
+	int return_dim(){ return dim; }
+
+	double return_x(int pos){ return x[pos]; }
+	double return_y(int pos){ return y[pos]; }
+	double return_z(int pos){ return z[pos]; }
+
+	int node_number_inElem(int El_num, int node_num){ return nodesInElem[El_num][node_num]; }
 
 	//Initilize matrices
 	void initilizeMatrices(void);
@@ -177,6 +185,7 @@ public:
 	void AssembleLocalElementMatrixBarycentric3D(int *nodes, double *x, double *y, double *z, int dimension, double **E, double nu, double youngE, double thickness);
 
 	//*******************cuda************
+	void Linear2DBarycentric_B_CUDA_host(void);//Solves the LHS of the equation for the dynamic elasticity equation
 	void Linear3DBarycentric_B_CUDA_host(void);
 
 	void Linear3DBarycentric_globalK_host(void);
@@ -185,7 +194,7 @@ public:
 
 	//Functions to setup f
 	void ApplySudoForcesBarycentric(int numP, int numBC, int *localcoord, int *elemForce, double force_x, double force_y, double *f, int **nodesInElem, double thickness, double *x, double *y, int **displaceInElem);
-	void ApplyEssentialBoundaryConditionsBarycentric(int numP, int numBC, int *localcoord, int *elemForce, double *forceVec_x, double *forceVec_y, double *f, double **K, int **nodesInElem, double thickness, double *x, double *y, int **displaceInElem);
+	void ApplyEssentialBoundaryConditionsBarycentric(int numP, int numBC, int *localcoord, int *elemForce, double forceVec_x, double forceVec_y, double *f, double **K, int **nodesInElem, double thickness, double *x, double *y, int **displaceInElem);
 	void make_surface_f(void);
 
 
@@ -218,7 +227,9 @@ public:
 	void set_zero_AxB(void);
 	
 
-	//calculating the von-mises stresses
+	//cuda use set and read
+	void set_cuda_use(bool t_f){ cuda_use = t_f; };
+	bool get_cuda_use(void){ return cuda_use; };
 	
 };
 
