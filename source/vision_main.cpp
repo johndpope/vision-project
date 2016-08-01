@@ -167,10 +167,17 @@ int margins = squareLength - markerLength_charuco;
 int aruco_center_id = 0;
 Size imageSize;
 bool aruco_begin = false;// this means that we have not begun the tracking.
+
+//Defining studo force information
+int num_nodes_interseted = 2;
 vector<Point2f> aruco_position;//we have t+1
+vector<Point2f> aruco_postion2;
 vector<Point2f> meshnode_position;//we have t
+vector<Point2f> meshnode_position2;
 int node_interested = 338;
-vector<Point2f> diff;//the diff vector for 
+int node_interested2 = 200;
+vector<Point2f> diff;//the diff vector for sudoforce 1
+vector<Point2f> diff2;// diff vector for sudoforce2
 //chessboard markers
 
 
@@ -258,36 +265,57 @@ void get_mesh(Geometry *p){
 	int e = p->return_numElems();
 	// global_geo.return_numElems()
 	if (p->get_dynamic()){
+		
+		/*if (display_counter == 500){
+		p->setSudoNode(20);
+		p->setSudoForcex(-100);
+		p->setSudoForcey(-100);
+		}*/
+		display_counter++;
+
+		/*if (!cuda_init){
+			p->initialize_CUDA();
+			cuda_init = true;
+			}*/
 		if (1){
+			double divisor = 600.0;
+			//p->set_force_rest(true);
 			p->setSudoNode(node_interested);
-			p->setSudoForcex(-diff[0].x/600.00);
-			p->setSudoForcey(-diff[0].y / 600.00);
+			p->setSudoForcex(-diff[0].x / divisor);
+			p->setSudoForcey(-diff[0].y / divisor);
+			//p->call_sudo_force_func();
+		/*	p->setSudoNode(node_interested2);
+			p->setSudoForcex(-diff2[0].x / divisor);
+			p->setSudoForcey(-diff2[0].y / divisor);*/
+
+			/*	p->set_force_rest(false);
+			p->call_sudo_force_func();*/
 			/*int sign_x;
 			int sign_y;
 			if (diff[0].x < 0){
-				sign_x = -1;
+			sign_x = -1;
 			}
 			else if (diff[0].x >= 0){
-				sign_x = 1;
+			sign_x = 1;
 			}
 			if (diff[0].y < 0){
-				sign_y = -1;
+			sign_y = -1;
 			}
 			else if (diff[0].y >= 0){
-				sign_y = 1;
+			sign_y = 1;
 			}
-			
+
 			p->setSudoForcex(-sign_x*log(sign_x*diff[0].x/1500.0+1));
 			p->setSudoForcey(-sign_y*log(sign_y*diff[0].y /1500.0 + 1));*/
 			/*if (norm(diff[0]) > 30.0){
-				p->initialize_dynamic();
+			p->initialize_dynamic();
 			}*/
-			
+
 			/*else{
-				p->setSudoForcex(0.0);
-				p->setSudoForcey(0.0);
+			p->setSudoForcex(0.0);
+			p->setSudoForcey(0.0);
 			}*/
-	/*		p->setSudoForcex(1.0);
+			/*		p->setSudoForcex(1.0);
 			p->setSudoForcey(1.0);*/
 		}
 		else {
@@ -295,17 +323,11 @@ void get_mesh(Geometry *p){
 			p->setSudoForcex(0);
 			p->setSudoForcey(0);
 		}
-		/*if (display_counter == 500){
-		p->setSudoNode(20);
-		p->setSudoForcex(-100);
-		p->setSudoForcey(-100);
-		}*/
-		display_counter++;
-		/*if (!cuda_init){
-			p->initialize_CUDA();
-			cuda_init = true;
-			}*/
 		p->make_K_matrix();
+
+
+	
+
 		p->find_b();
 
 		p->update_vector();
@@ -338,6 +360,7 @@ void draw_mesh(Geometry *p, Mat I){
 	int e = p->return_numElems();
 	// global_geo.return_numElems()
 	meshnode_position.clear();
+	meshnode_position2.clear();
 	for (int i = 0; i < p->return_numElems(); i++){
 		int node_considered4=0;
 
@@ -372,7 +395,7 @@ void draw_mesh(Geometry *p, Mat I){
 		else {
 			line(I, mesh_geometry_display[node_considered2], mesh_geometry_display[node_considered3], color_line, thickness, lineType);
 		}
-		
+		//not good programming, node_intersted1
 		if (node_considered1 == node_interested){
 			meshnode_position.push_back((mesh_geometry_display[node_considered1]));
 			circle(I, mesh_geometry_display[node_considered1], 20, Scalar(0, 100, 255), 4);
@@ -387,6 +410,24 @@ void draw_mesh(Geometry *p, Mat I){
 		else if (node_considered3 == node_interested){
 			meshnode_position.push_back((mesh_geometry_display[node_considered3]));
 			circle(I, mesh_geometry_display[node_considered3], 20, Scalar(0, 100, 255), 4);
+			putText(I, to_string(mesh_geometry_display[node_considered3].x) + "   " + to_string(mesh_geometry_display[node_considered3].y), mesh_geometry_display[node_considered3], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+
+		}
+		//node_interested2
+		if (node_considered1 == node_interested2){
+			meshnode_position2.push_back((mesh_geometry_display[node_considered1]));
+			circle(I, mesh_geometry_display[node_considered1], 20, Scalar(255, 100, 255), 4);
+			putText(I, to_string(mesh_geometry_display[node_considered1].x) + "   " + to_string(mesh_geometry_display[node_considered1].y), mesh_geometry_display[node_considered1], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+		}
+		else if (node_considered2 == node_interested2){
+			meshnode_position2.push_back((mesh_geometry_display[node_considered2]));
+			circle(I, mesh_geometry_display[node_considered2], 20, Scalar(255, 100, 255), 4);
+			putText(I, to_string(mesh_geometry_display[node_considered2].x) + "   " + to_string(mesh_geometry_display[node_considered2].y), mesh_geometry_display[node_considered2], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+
+		}
+		else if (node_considered3 == node_interested2){
+			meshnode_position2.push_back((mesh_geometry_display[node_considered3]));
+			circle(I, mesh_geometry_display[node_considered3], 20, Scalar(255, 100, 255), 4);
 			putText(I, to_string(mesh_geometry_display[node_considered3].x) + "   " + to_string(mesh_geometry_display[node_considered3].y), mesh_geometry_display[node_considered3], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
 
 		}
@@ -604,7 +645,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		unsigned int numSquares = numCornersHor * numCornersVer;
 		Size board_sz = Size(numCornersHor, numCornersVer);
 		bool found = findChessboardCorners(I_gray_resize, board_sz, corners, CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FILTER_QUADS);
-
+		
 		if (found)
 		{
 			//cornerSubPix(I, corners, Size(11, 11), Size(-1, -1), TermCriteria(CV_TERMCRIT_EPS | CV_TERMCRIT_ITER, 30, 0.1));
@@ -1035,8 +1076,11 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		
 		//imshow("original", I);
 		if (1)//DRAW VERY IMPORTANT!!!!!!!!!!!
-		{
-			
+		{/*
+			diff.clear();
+			diff2.clear();
+			diff.push_back(Point2f(0.0, 0.0));
+			diff2.push_back(Point2f(0.0, 0.0));*/
 			//solvePnP(Mat(geo_deform), Mat(tracking_colors), instrinsics, distortion, rvec_new, tvec_new, false);
 			if (found){
 				
@@ -1046,18 +1090,36 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 				
 			}
 			if (markerIds.size() > 0){ //if there is an aruco marker
-				diff.clear();
-				diff.push_back(Point2f((aruco_position[0].x - meshnode_position[0].x), (aruco_position[0].y - meshnode_position[0].y)));
-				if (cv::norm(diff) > 100){
-					diff.clear();
-					diff.push_back(Point2f(0.0, 0.0));
+				for (int dummy_i = 0; dummy_i < markerIds.size(); dummy_i++){
+					if (markerIds[dummy_i] == 1){
+						diff.clear();
+						diff.push_back(Point2f((aruco_position[dummy_i].x - meshnode_position[0].x), (aruco_position[dummy_i].y - meshnode_position[0].y)));
+						if (cv::norm(diff) > 100){
+							diff.clear();
+							diff.push_back(Point2f(0.0, 0.0));
+						}
+						putText(I, "Force 1: " + to_string(diff[0].x) + "  " + to_string(diff[0].y), Point2f(50.0, 50.0), 2, 3, Scalar(100, 100, 255),2,-1);
+
+					}
+					else if (markerIds[dummy_i] == 2){
+						diff2.clear();
+						diff2.push_back(Point2f((aruco_position[dummy_i].x - meshnode_position2[0].x), (aruco_position[dummy_i].y - meshnode_position2[0].y)));
+						if (cv::norm(diff2) > 100){
+							diff2.clear();
+							diff2.push_back(Point2f(0.0, 0.0));
+						}
+						putText(I, "Force 2: " + to_string(diff2[0].x) + "  " + to_string(diff2[0].y), Point2f(50.0,150.0), 2, 3, Scalar(100, 100, 255),2,-1);
+
+					}
+					
 				}
-				putText(I, "Force : " + to_string(diff[0].x) + "  " + to_string(diff[0].y), Point2f(50.0, 50.0), 2, 3, Scalar(100, 100, 255));
+				//diff.clear();
 			}
 			else{ // if there isn't then put sudo force to zero
 				diff.clear();
 				diff.push_back(Point2f(0.0, 0.0));
-				
+				diff2.clear();
+				diff2.push_back(Point2f(0.0, 0.0));
 			}
 			//projectPoints(geo_deform, rvec_new, tvec_new, instrinsics, distortion, output_deform);
 			if (0){
@@ -1089,6 +1151,9 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 			//duration_vision = (std::clock() - start_K11) / (double)CLOCKS_PER_SEC;
 			//cout << "Duration vision: " << duration_vision << endl;
 		}
+
+		imshow("original", I);
+
 	}
 
 	//drawContours(I_inrange, contours, 0, Scalar(255,100,100), 2, 8);
@@ -1379,11 +1444,12 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 		geo_ptr->set_beta1(0.9); // if beta_2 >= beta1 and beta > 1/2 then the time stepping scheme is unconditionally stable.
 		geo_ptr->set_beta2(0.9);
 		geo_ptr->set_dt(0.6);
-		geo_ptr->set_dynamic_alpha(0.90);
+		geo_ptr->set_dynamic_alpha(0.10);
 		geo_ptr->set_dynamic_xi(0.70);
 		
 	}
 	diff.push_back(Point2f(0.0, 0.0));
+	diff2.push_back(Point2f(0.0 ,0.0));
 	//global_geo.initialize_CUDA
 	display_counter = 0;
 	first_geo_init = true;

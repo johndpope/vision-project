@@ -193,7 +193,8 @@ __global__ void make_K_cuda2d(double *K,
 	int DOF[6];
 	int counter;
 	int offset = threadIdx.x + blockIdx.x*blockDim.x; // offset will essentaillay be the element counter
-	int offset_y = threadIdx.y + blockIdx.y*blockDim.y;
+	int offset_y = threadIdx.y ;
+	
 	if (offset < numE){
 		double y23 = y_vector[nodesInElem[nodesinelemX(1, offset, 3)]] - y_vector[nodesInElem[nodesinelemX(2, offset, 3)]];//y23
 		double y31 = y_vector[nodesInElem[nodesinelemX(2, offset, 3)]] - y_vector[nodesInElem[nodesinelemX(0, offset, 3)]];//y31
@@ -204,7 +205,7 @@ __global__ void make_K_cuda2d(double *K,
 		double x13 = x_vector[nodesInElem[nodesinelemX(0, offset, 3)]] - x_vector[nodesInElem[nodesinelemX(2, offset, 3)]];//x13
 		double x21 = x_vector[nodesInElem[nodesinelemX(1, offset, 3)]] - x_vector[nodesInElem[nodesinelemX(0, offset, 3)]];//x21
 		double det_J = x13*y23 - y13*x23;
-#if 1
+#if 1 
 		K[36 * offset + 0] = det_J*rho*thickness / 3;
 		K[36 * offset + 1] = 0.0;
 		K[36 * offset + 2] = det_J*rho*thickness / 4;
@@ -354,10 +355,10 @@ __global__ void make_K_cuda2d(double *K,
 		else if (offset_y == 35){
 			K[36 * offset + 35] = det_J*rho*thickness / 6;
 		}
-		__syncthreads();
+		
 #endif // 0
 
-	
+		__threadfence();
 		//The two loops are responsible for finding the DOF (or q_i) for each element
 		for (int npe = 0; npe < 3; npe++){
 			dummy_node = nodesInElem[nodesinelemX(npe, offset, 3)]; // The row of the matrix we looking at will be k_th element and npe (nodes per element) 	

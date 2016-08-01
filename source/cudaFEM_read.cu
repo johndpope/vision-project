@@ -36,6 +36,7 @@ Geometry::~Geometry(){
 	//deleteing dynamic arrays
 	delete[] x;
 	delete[] y;
+	delete[] z;
 
 
 	for (int e = 0; e < numE; e++){
@@ -71,6 +72,11 @@ Geometry::~Geometry(){
 	delete[] M;
 	delete[] nodesInElem;
 	delete[] E_vector_host;
+	delete[] elemForce;
+	delete[] forceVec_x;
+	delete[] forceVec_y;
+	delete[] K_vector_form;
+
 
 	//
 	cudaFree(d_A_dense);
@@ -287,6 +293,7 @@ void Geometry::initilizeMatrices(){
 	for (int i = 0; i < numNodes*dim; i++){
 		f[i] = 0;
 	}
+
 }
 void Geometry::make_K_matrix(){
 	std::clock_t start_K_local1;
@@ -325,9 +332,8 @@ void Geometry::make_K_matrix(){
 	double duration_K_global = (std::clock() - start_K_global) / (double)CLOCKS_PER_SEC;
 	//ApplyEssentialBoundaryConditionsBarycentric(numNodes*dim, numForceBC, localcoordForce, elemForce, forceVec_x, forceVec_y, f, K, nodesInElem, thickness, x, y, displaceInElem);
 	//ApplyEssentialBoundaryConditionsBarycentric(numNodes*dim, sudo_node_force, localcoordForce, elemForce, sudo_force_x, sudo_force_y, f, K, nodesInElem, thickness, x, y, displaceInElem);
-	
 	ApplySudoForcesBarycentric(numNodes*dim, sudo_node_force, localcoordForce, elemForce, sudo_force_x, sudo_force_y, f, nodesInElem, thickness, x, y, displaceInElem);
-	
+
 	/*for (int i = 0; i < numNodes*dim; i++){
 		std::cout << f[i] << std::endl;
 	}*/
@@ -336,6 +342,12 @@ void Geometry::make_K_matrix(){
 	//std::cout << "sudo force x: " << sudo_force_x << " sudo_force y: " << sudo_force_y << std::endl;
 }
 
+//void Geometry::call_sudo_force_func(void){
+//
+//	//call this to apply the sudo forces
+//	//ApplySudoForcesBarycentric(numNodes*dim, sudo_node_force, localcoordForce, elemForce, sudo_force_x, sudo_force_y, f, nodesInElem, thickness, x, y, displaceInElem, force_reset);
+//
+//}
 void Geometry::AssembleGlobalElementMatrixBarycentric(int numP, int numE, int nodesPerElem, int **elem, double ***E,double ***M, float *K, double *global_M, int **displaceInElem){
 	//cout << numP << endl << endl << endl << endl;
 
@@ -1374,16 +1386,16 @@ void Geometry::Linear2DBarycentric_B_CUDA_host(){
 	cudaMemcpy(d_x, x, numNodes*sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_y, y, numNodes*sizeof(double), cudaMemcpyHostToDevice);
 
-	dim3 blocks((numE + 300) / 241, 1);//numE / (dim)
-	dim3 threads(241,1);
+	dim3 blocks((numE+35)/35 , 1);//numE / (dim)
+	dim3 threads(36,36);
 
-
+	
 	cudaDeviceProp prop;
 	cudaGetDeviceProperties(&prop, 0);
 	cudaMemset(d_A_dense, 0.0, numNodes*dim*numNodes*dim*sizeof(*d_A_dense));
 	
-	//make_K_cuda2d << <(((numE+240)/241  )), 241 >> >(E_vector_device, nodesInElem_device, d_x, d_y, displaceInElem_device, d_A_dense, numNodes, thickness, Young, Poisson, c_alpha, beta_1, beta_2, density, dt, c_xi,numE);
-	make_K_cuda2d << <blocks, threads >> >(E_vector_device, nodesInElem_device, d_x, d_y, displaceInElem_device, d_A_dense, numNodes, thickness, Young, Poisson, c_alpha, beta_1, beta_2, density, dt, c_xi, numE);
+	make_K_cuda2d << <(((numE+300)/241  )), 241 >> >(E_vector_device, nodesInElem_device, d_x, d_y, displaceInElem_device, d_A_dense, numNodes, thickness, Young, Poisson, c_alpha, beta_1, beta_2, density, dt, c_xi,numE);
+	//make_K_cuda2d << <blocks, threads >> >(E_vector_device, nodesInElem_device, d_x, d_y, displaceInElem_device, d_A_dense, numNodes, thickness, Young, Poisson, c_alpha, beta_1, beta_2, density, dt, c_xi, numE);
 
 	cudaMemcpy(h_A_dense, d_A_dense, numNodes*dim*numNodes*dim*sizeof(*d_A_dense), cudaMemcpyDeviceToHost);
 
@@ -1513,10 +1525,11 @@ void Geometry::ApplySudoForcesBarycentric(int numP, int node_applied, int *local
 	double length;
 	double x_1, y_1, x_2, y_2;
 
+	
+		for (int dummy_V = 0; dummy_V < numP; dummy_V++){
+			f[dummy_V] = 0;
+		}
 
-	for (int dummy_V = 0; dummy_V < numP; dummy_V++){
-		f[dummy_V] = 0;
-	}
 
 
 

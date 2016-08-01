@@ -65,6 +65,7 @@ class Geometry{
 	int *localcoordForce=NULL; //Which side of the element, it will be the opposite of the local coord
 	double *forceVec_x=NULL; //What is the force/unit
 	double *forceVec_y=NULL;
+	//bool force_reset = true;
 
 	//K_matrix nad M_matrix
 	double **K = NULL;
@@ -144,7 +145,7 @@ public:
 	Geometry();
 	~Geometry();
 	//VON MISES STRESS
-	double *global_stress_mises = NULL;
+	double *global_stress_mises;
 	void read_nodes(void);
 	void read_elem(void);
 	void read_force(void);
@@ -193,13 +194,13 @@ public:
 	void make_K_matrix(void);
 
 	//Functions to setup f
-	void ApplySudoForcesBarycentric(int numP, int numBC, int *localcoord, int *elemForce, double force_x, double force_y, double *f, int **nodesInElem, double thickness, double *x, double *y, int **displaceInElem);
+	void ApplySudoForcesBarycentric(int numP, int numBC, int *localcoord, int *elemForce, double force_x, double force_y, double *g, int **nodesInElem, double thickness, double *x, double *y, int **displaceInElem);
 	void ApplyEssentialBoundaryConditionsBarycentric(int numP, int numBC, int *localcoord, int *elemForce, double forceVec_x, double forceVec_y, double *f, double **K, int **nodesInElem, double thickness, double *x, double *y, int **displaceInElem);
 	void make_surface_f(void);
-
-
+	//void set_force_rest(bool in_rest){ force_reset = in_rest; };
+	//void call_sudo_force_func(void);
 	//set sudo forces
-	void setSudoNode(int node){ sudo_node_force = node; };
+	void setSudoNode(int node_in){ sudo_node_force = node_in; };
 	void setSudoForcex(double x_force){ sudo_force_x = x_force; };
 	void setSudoForcey(double y_force){ sudo_force_y = y_force; };
 
@@ -230,6 +231,8 @@ public:
 	//cuda use set and read
 	void set_cuda_use(bool t_f){ cuda_use = t_f; };
 	bool get_cuda_use(void){ return cuda_use; };
+
+	//void 
 	
 };
 

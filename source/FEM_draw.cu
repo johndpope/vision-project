@@ -705,10 +705,11 @@ void drawMesh(Geometry *p){
 		}
 		else if (p->return_dim() == 2){
 			//glColor4f(p->global_stress_mises[i]*10.0, 0.2, 0.5, 0.5);
-			glColor3f(p->global_stress_mises[i] * 10.0, p->global_stress_mises[i] * 2.0, p->global_stress_mises[i] * 5.0);
-			//glColor3f(1.0, 0.0, 1.0);
+			//glColor3f(p->global_stress_mises[i] * 10.0, p->global_stress_mises[i] * 2.0, p->global_stress_mises[i] * 5.0);
+			glColor3f(1.0, 0.0, 1.0);
 			glPolygonMode(GL_FRONT_AND_BACK, GL_TRIANGLES);
 			glBegin(GL_TRIANGLES);
+#if 0
 			glVertex3f(p->return_x(node_considered1) * 200 - 200, p->return_y(node_considered1) * 200 - 200, p->return_z(node_considered1) * 200);       /* NE */
 			glVertex3f(p->return_x(node_considered2) * 200 - 200, p->return_y(node_considered2) * 200 - 200, p->return_z(node_considered2) * 200);       /* NE */
 			glVertex3f(p->return_x(node_considered3) * 200 - 200, p->return_y(node_considered3) * 200 - 200, p->return_z(node_considered3) * 200);       /* NE */
@@ -719,6 +720,23 @@ void drawMesh(Geometry *p){
 			glVertex3f(p->return_x(node_considered2) * 200 - 200, p->return_y(node_considered2) * 200 - 200, p->return_z(node_considered2) * 200);
 			glVertex3f(p->return_x(node_considered3) * 200 - 200, p->return_y(node_considered3) * 200 - 200, p->return_z(node_considered3) * 200);
 			glEnd();
+
+#endif
+
+			
+#if 1
+			glVertex3f(p->return_x(node_considered1) * 2000- 200, p->return_y(node_considered1) * 2000 - 200, p->return_z(node_considered1) * 200);       /* NE */
+			glVertex3f(p->return_x(node_considered2) * 2000 - 200, p->return_y(node_considered2) * 2000 - 200, p->return_z(node_considered2) * 200);       /* NE */
+			glVertex3f(p->return_x(node_considered3) * 2000 - 200, p->return_y(node_considered3) * 2000 - 200, p->return_z(node_considered3) * 200);       /* NE */
+			glColor3f(p->global_stress_mises[i] * 10.0, p->global_stress_mises[i] * 2.0, p->global_stress_mises[i] * 5.0);
+			glEnd();
+			glBegin(GL_LINE_LOOP);
+			glVertex3f(p->return_x(node_considered1) * 2000 - 200, p->return_y(node_considered1) * 2000 - 200, p->return_z(node_considered1) * 200);
+			glVertex3f(p->return_x(node_considered2) * 2000 - 200, p->return_y(node_considered2) * 2000 - 200, p->return_z(node_considered2) * 200);
+			glVertex3f(p->return_x(node_considered3) * 2000- 200, p->return_y(node_considered3) * 2000 - 200, p->return_z(node_considered3) * 200);
+			glEnd();
+
+#endif
 			
 		}
 		x_win = -(x * 400 - 400);
@@ -861,9 +879,9 @@ int draw_things(Geometry *p)
 	//initilizing all of the vectors
 	if (p->get_dynamic())
 		p->initialize_dynamic();
-	p->set_beta1(0.9); // if beta_2 >= beta1 and beta > 1/2 then the time stepping scheme is unconditionally stable.
-	p->set_beta2(0.9);
-	p->set_dt(0.05);
+	p->set_beta1(0.7); // if beta_2 >= beta1 and beta > 1/2 then the time stepping scheme is unconditionally stable.
+	p->set_beta2(0.7);
+	p->set_dt(0.005);
 	p->set_dynamic_alpha(0.2);
 	p->set_dynamic_xi(0.23);
 	p->initialize_zerovector(7);
@@ -988,9 +1006,9 @@ int draw_things(Geometry *p)
 			start_K = std::clock();
 
 			//Solve the 2D FEM in each frame
-			p->setSudoNode(200);
-			p->setSudoForcex(0.01);
-			p->setSudoForcey( 0.01);
+			p->setSudoNode(340);
+			p->setSudoForcex(0.1);
+			p->setSudoForcey( 0.1);
 			
 			/*if (p->return_dim() == 3){
 				p->Linear3DBarycentric_B_CUDA_host();
