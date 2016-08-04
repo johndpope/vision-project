@@ -384,7 +384,7 @@ __global__ void make_K_cuda2d(double *K,
 	}
 }
 
-__global__ void make_K_cuda3d(double *E_vector, int *nodesInElem, double *x_vector, double *y_vector, double *z_vector, int *displaceInElem_device, float *d_A_dense,int numnodes) {
+__global__ void make_K_cuda3d(double *E_vector, int *nodesInElem, double *x_vector, double *y_vector, double *z_vector, int *displaceInElem_device, float *d_A_dense,int *numnodes) {
 	//int x = threadIdx.x + blockIdx.x*blockDim.x; //if we have a 3D problem then this will go from 0 to 11
 	int row;
 	int dummy_node;
@@ -396,8 +396,8 @@ __global__ void make_K_cuda3d(double *E_vector, int *nodesInElem, double *x_vect
 	int offset = threadIdx.x + blockIdx.x*blockDim.x; // offset will essentaillay be the element counter
 	//int y_offset = threadIdx.y + blockIdx.y*blockDim.y;
 	int max_limit = 12 * 12 * 4374;
-	double E = 200000;
-	double nu = 0.45;
+	double E = 20000.0;
+	double nu = 0.49;
 	double x14 = x_vector[nodesInElem[nodesinelemX(0, offset, 4)]] - x_vector[nodesInElem[nodesinelemX(3, offset, 4)]];
 	double x24 = x_vector[nodesInElem[nodesinelemX(1, offset, 4)]] - x_vector[nodesInElem[nodesinelemX(3, offset, 4)]];
 	double x34 = x_vector[nodesInElem[nodesinelemX(2, offset, 4)]] - x_vector[nodesInElem[nodesinelemX(3, offset, 4)]];
@@ -589,7 +589,7 @@ __global__ void make_K_cuda3d(double *E_vector, int *nodesInElem, double *x_vect
 			for (int r = 0; r < 12; r++){
 
 				//d_A_dense[IDX2C(DOF[c], DOF[r], 3000)] = d_A_dense[IDX2C(DOF[c], DOF[r], 3000)] + E_vector[offset * 144 + c*12+r];
-				atomicAdda(&(d_A_dense[IDX2C(DOF[c], DOF[r], 3 * numnodes)]), E_vector[offset * 144 + c * 12 + r]);
+				atomicAdda(&(d_A_dense[IDX2C(DOF[c], DOF[r], 3 * (*numnodes))]), E_vector[offset * 144 + c * 12 + r]);
 				//IDX2C(DOF[c], DOF[r], 3000)
 				//K[IDX2C(DOF[r], DOF[c], numP*dim)] = K[IDX2C(DOF[r], DOF[c], numP*dim)] + E[k][r][c];
 			}

@@ -87,7 +87,8 @@ float3 translation = make_float3(0.0, 0.0, 0.0);
 #ifndef RAND_MAX
 #define RAND_MAX 4095
 #endif
-
+int node_interested_draw1 = 100;
+int node_interested_draw2 = 101;
 
 /*****************************************************************************
 * Truncate a degree.
@@ -676,7 +677,8 @@ void drawMesh(Geometry *p){
 		
 		if (p->return_dim() == 3){
 			glLineWidth(2);
-			glColor4f(1, y, z, 0.5);
+			glColor4f(x*100, y*100, z*100, 0.5);
+#if 0
 			glBegin(GL_LINE_LOOP);
 			glVertex3f(p->return_x(node_considered1) * 400 - 200, p->return_y(node_considered1) * 400 - 200, p->return_z(node_considered1) * 400);       /* NE */
 			glVertex3f(p->return_x(node_considered2) * 400 - 200, p->return_y(node_considered2) * 400 - 200, p->return_z(node_considered2) * 400);       /* NE */
@@ -702,6 +704,33 @@ void drawMesh(Geometry *p){
 			glVertex3f(p->return_x(node_considered4) * 400 - 200, p->return_y(node_considered4) * 400 - 200, p->return_z(node_considered4) * 400);
 			glVertex3f(p->return_x(node_considered3) * 400 - 200, p->return_y(node_considered3) * 400 - 200, p->return_z(node_considered3) * 400);
 			glEnd();
+#endif // 0
+			glBegin(GL_LINE_LOOP);
+			glVertex3f(p->return_x(node_considered1) * 20000 - 200, p->return_y(node_considered1) * 20000 - 200, p->return_z(node_considered1) * 20000);       /* NE */
+			glVertex3f(p->return_x(node_considered2) * 20000 - 200, p->return_y(node_considered2) * 20000 - 200, p->return_z(node_considered2) * 20000);       /* NE */
+			glVertex3f(p->return_x(node_considered3) * 20000 - 200, p->return_y(node_considered3) * 20000 - 200, p->return_z(node_considered3) * 20000);       /* NE */
+
+			glEnd();
+
+			glBegin(GL_LINE_LOOP);
+			glVertex3f(p->return_x(node_considered2) * 20000 - 200, p->return_y(node_considered2) * 20000 - 200, p->return_z(node_considered2) * 20000);
+			glVertex3f(p->return_x(node_considered3) * 20000 - 200, p->return_y(node_considered3) * 20000 - 200, p->return_z(node_considered3) * 20000);
+			glVertex3f(p->return_x(node_considered4) * 20000 - 200, p->return_y(node_considered4) * 20000 - 200, p->return_z(node_considered4) * 20000);
+			glEnd();
+
+
+			glBegin(GL_LINE_LOOP);
+			glVertex3f(p->return_x(node_considered2) * 20000 - 200, p->return_y(node_considered2) * 20000 - 200, p->return_z(node_considered2) * 20000);
+			glVertex3f(p->return_x(node_considered4) * 20000 - 200, p->return_y(node_considered4) * 20000 - 200, p->return_z(node_considered4) * 20000);
+			glVertex3f(p->return_x(node_considered1) * 20000 - 200, p->return_y(node_considered1) * 20000 - 200, p->return_z(node_considered1) * 20000);
+			glEnd();
+
+			glBegin(GL_LINE_LOOP);
+			glVertex3f(p->return_x(node_considered1) * 20000 - 200, p->return_y(node_considered1) * 20000 - 200, p->return_z(node_considered1) * 20000);
+			glVertex3f(p->return_x(node_considered4) * 20000 - 200, p->return_y(node_considered4) * 20000 - 200, p->return_z(node_considered4) * 20000);
+			glVertex3f(p->return_x(node_considered3) * 20000 - 200, p->return_y(node_considered3) * 20000 - 200, p->return_z(node_considered3) * 20000);
+			glEnd();
+
 		}
 		else if (p->return_dim() == 2){
 			//glColor4f(p->global_stress_mises[i]*10.0, 0.2, 0.5, 0.5);
@@ -725,16 +754,18 @@ void drawMesh(Geometry *p){
 
 			
 #if 1
-			glVertex3f(p->return_x(node_considered1) * 2000- 200, p->return_y(node_considered1) * 2000 - 200, p->return_z(node_considered1) * 200);       /* NE */
-			glVertex3f(p->return_x(node_considered2) * 2000 - 200, p->return_y(node_considered2) * 2000 - 200, p->return_z(node_considered2) * 200);       /* NE */
-			glVertex3f(p->return_x(node_considered3) * 2000 - 200, p->return_y(node_considered3) * 2000 - 200, p->return_z(node_considered3) * 200);       /* NE */
+			glVertex3f(p->return_x(node_considered1) * 20000- 200, p->return_y(node_considered1) * 20000 - 200, p->return_z(node_considered1) * 200);       /* NE */
+			glVertex3f(p->return_x(node_considered2) * 20000 - 200, p->return_y(node_considered2) * 20000 - 200, p->return_z(node_considered2) * 200);       /* NE */
+			glVertex3f(p->return_x(node_considered3) * 20000 - 200, p->return_y(node_considered3) * 20000 - 200, p->return_z(node_considered3) * 200);       /* NE */
 			glColor3f(p->global_stress_mises[i] * 10.0, p->global_stress_mises[i] * 2.0, p->global_stress_mises[i] * 5.0);
 			glEnd();
 			glBegin(GL_LINE_LOOP);
-			glVertex3f(p->return_x(node_considered1) * 2000 - 200, p->return_y(node_considered1) * 2000 - 200, p->return_z(node_considered1) * 200);
-			glVertex3f(p->return_x(node_considered2) * 2000 - 200, p->return_y(node_considered2) * 2000 - 200, p->return_z(node_considered2) * 200);
-			glVertex3f(p->return_x(node_considered3) * 2000- 200, p->return_y(node_considered3) * 2000 - 200, p->return_z(node_considered3) * 200);
+			glVertex3f(p->return_x(node_considered1) * 20000 - 200, p->return_y(node_considered1) * 20000 - 200, p->return_z(node_considered1) * 200);
+			glVertex3f(p->return_x(node_considered2) * 20000 - 200, p->return_y(node_considered2) * 20000 - 200, p->return_z(node_considered2) * 200);
+			glVertex3f(p->return_x(node_considered3) * 20000- 200, p->return_y(node_considered3) * 20000 - 200, p->return_z(node_considered3) * 200);
 			glEnd();
+
+			
 
 #endif
 			
@@ -807,11 +838,15 @@ void drawMesh(Geometry *p){
 
 	
 	glBegin(GL_POINTS);
-	glVertex3f(p->return_x(0) * 400 - 200, p->return_y(0) * 400 - 200, p->return_z(0)*400 );
+#if 0
+	glVertex3f(p->return_x(0) * 400 - 200, p->return_y(0) * 400 - 200, p->return_z(0) * 400);
 
 	glColor3f(0.0f, 1.0f, 1.6f);
 	glVertex3f(p->return_x(20) * 200 - 200, p->return_y(20) * 200 - 200, p->return_z(20) * 400);
 
+#endif // 0
+	glVertex3f(p->return_x(node_interested_draw1) * 20000 - 200, p->return_y(node_interested_draw1) * 20000 - 200, p->return_z(node_interested_draw1) * 20000);
+	glVertex3f(p->return_x(node_interested_draw2) * 20000 - 200, p->return_y(node_interested_draw2) * 20000 - 200, p->return_z(node_interested_draw2) * 20000);
 	glEnd();
 
 	//std::cout << " X _ win: " << -(p->return_x(shortest_node) * 400-400) << " Y _ WIN : " << p->return_y(shortest_node) * 400 << std::endl;
@@ -879,11 +914,20 @@ int draw_things(Geometry *p)
 	//initilizing all of the vectors
 	if (p->get_dynamic())
 		p->initialize_dynamic();
-	p->set_beta1(0.7); // if beta_2 >= beta1 and beta > 1/2 then the time stepping scheme is unconditionally stable.
-	p->set_beta2(0.7);
-	p->set_dt(0.005);
+	p->set_beta1(0.9); // if beta_2 >= beta1 and beta > 1/2 then the time stepping scheme is unconditionally stable.
+	p->set_beta2(0.9);
+	p->set_dt(0.5);
+	/*p->set_dynamic_alpha(0.2);
+	p->set_dynamic_xi(0.2);*/
 	p->set_dynamic_alpha(0.2);
-	p->set_dynamic_xi(0.23);
+	p->set_dynamic_xi(0.20);
+
+
+	p->set_beta1(0.9); // if beta_2 >= beta1 and beta > 1/2 then the time stepping scheme is unconditionally stable.
+	p->set_beta2(0.9);
+	p->set_dt(0.08);
+	p->set_dynamic_alpha(0.2);
+	p->set_dynamic_xi(0.83);
 	p->initialize_zerovector(7);
 	//next we set what nodes we want to make stable
 	int points[9];
@@ -1006,15 +1050,28 @@ int draw_things(Geometry *p)
 			start_K = std::clock();
 
 			//Solve the 2D FEM in each frame
-			p->setSudoNode(340);
+#if 0
+			p->setSudoNode(230);
 			p->setSudoForcex(0.1);
-			p->setSudoForcey( 0.1);
+			p->setSudoForcey(0.1);
+#endif // 0
+
 			
 			/*if (p->return_dim() == 3){
 				p->Linear3DBarycentric_B_CUDA_host();
 			}
 */
+			//p->sudo_force_value.clear();
+			p->sudo_force_index[0] = node_interested_draw1;
+			p->sudo_force_index[1] = node_interested_draw2;
+			double divisor2 = 1000.0;
 
+			p->sudo_force_value1[0] = -(2.0 / divisor2);
+			p->sudo_force_value1[1] = -(2.0 / divisor2);
+
+			p->sudo_force_value2[0] = -(2.0 / divisor2);
+			p->sudo_force_value2[1] = -(2.0 / divisor2);
+			
 			p->make_K_matrix();
 			//p->Linear2DBarycentric_B_CUDA_host();
 			//p->make_surface_f();
@@ -1042,17 +1099,36 @@ int draw_things(Geometry *p)
 	}
 	else{
 		for (;;){
-			if (display_counter < 1){
-				p->setSudoNode(100);
+			if (display_counter < 20){
+				/*p->setSudoNode(100);
 				p->setSudoForcex(1.0);
-				p->setSudoForcey(1.0);
+				p->setSudoForcey(1.0);*/
+				p->sudo_force_index[0] = 300;
+				p->sudo_force_index[1] = 300;
+				double divisor2 = 200.0;
+
+				p->sudo_force_value1[0] = (1.0 / divisor2);
+				p->sudo_force_value1[1] = (1.0 / divisor2);
+
+				p->sudo_force_value2[0] = (1.0 / divisor2);
+				p->sudo_force_value2[1] = (1.0 / divisor2);
 			}
 			else {
 				p->setSudoNode(6);
 				p->setSudoForcex(0);
 				p->setSudoForcey(0);
+				double divisor2 = 1.0;
+				p->sudo_force_index[0] = 230;
+				p->sudo_force_index[1] = 300;
+				p->sudo_force_value1[0] = -(0.0 / divisor2);
+				p->sudo_force_value1[1] = -(0.0 / divisor2);
+
+				p->sudo_force_value2[0] = -(0.0 / divisor2);
+				p->sudo_force_value2[1] = -(0.0 / divisor2);
+
+
 			}
-		
+			
 			/*if (display_counter == 500){
 				p->setSudoNode(20);
 				p->setSudoForcex(-100);

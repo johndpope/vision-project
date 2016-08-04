@@ -25,6 +25,8 @@
 #include <cassert>
 #include "Utilities.cuh"
 #include <ctime>
+
+
 void read_nodes(int *numNodes);
 
 class Geometry{
@@ -39,6 +41,7 @@ class Geometry{
 
 	//Nodes
 	int numNodes;
+	int *dev_numNodes = NULL; //numnodes for the device
 	double *x=NULL, *y=NULL, *z = NULL;
 	double *d_x = NULL, *d_y = NULL, *d_z = NULL;
 
@@ -139,13 +142,22 @@ class Geometry{
 
 	//CUDA USE BOOL
 	bool cuda_use = false;
+	
 
 	
 public:
 	Geometry();
 	~Geometry();
+	//global variables
 	//VON MISES STRESS
-	double *global_stress_mises;
+		double *global_stress_mises;
+
+		//sudo force vector for 2 forces
+		int sudo_force_index[2];
+		double sudo_force_value1[2];
+		double sudo_force_value2[2];
+		//SF vector values
+	//	std::vector<cv::Point2f> sudo_force_value(2);
 	void read_nodes(void);
 	void read_elem(void);
 	void read_force(void);
