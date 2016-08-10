@@ -44,6 +44,7 @@ class Geometry{
 	int *dev_numNodes = NULL; //numnodes for the device
 	double *x=NULL, *y=NULL, *z = NULL;
 	double *d_x = NULL, *d_y = NULL, *d_z = NULL;
+	double *d_x_dist = NULL, *d_y_dist = NULL, *d_z_dist = NULL;
 
 	//Elements
 	int numE;
@@ -141,7 +142,7 @@ class Geometry{
 	int numNodesZero;
 
 	//CUDA USE BOOL
-	bool cuda_use = false;
+	bool cuda_use;
 	
 
 	
@@ -153,9 +154,10 @@ public:
 		double *global_stress_mises;
 
 		//sudo force vector for 2 forces
-		int sudo_force_index[2];
-		double sudo_force_value1[2];
-		double sudo_force_value2[2];
+		int num_s_force = 20;
+		int sudo_force_index[20];
+		double sudo_force_value1[20];
+		double sudo_force_value2[20];
 		//SF vector values
 	//	std::vector<cv::Point2f> sudo_force_value(2);
 	void read_nodes(void);

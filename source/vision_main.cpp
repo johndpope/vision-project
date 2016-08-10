@@ -383,7 +383,7 @@ void get_mesh(Geometry *p){
 
 
 
-		if (1){
+		if (p->get_dynamic()){
 			p->find_b();
 
 			p->update_vector();

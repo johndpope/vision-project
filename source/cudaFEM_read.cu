@@ -260,9 +260,15 @@ void Geometry::read_force(){
 
 void Geometry::initilizeMatrices(){
 
+#if 0
 	cudaMalloc((void**)&d_x, numNodes*sizeof(double));
 	cudaMalloc((void**)&d_y, numNodes*sizeof(double));
 	cudaMalloc((void**)&d_z, numNodes*sizeof(double));
+#endif // 0
+
+	cudaMalloc((void**)&d_x_dist, numNodes*sizeof(double));
+	cudaMalloc((void**)&d_y_dist, numNodes*sizeof(double));
+	cudaMalloc((void**)&d_z_dist, numNodes*sizeof(double));
 	K = new double*[numNodes*dim];
 	h_A_dense = new float[numNodes*dim*numNodes*dim*sizeof(*h_A_dense)];
 	h_M_dense = new double[numNodes*dim*numNodes*dim*sizeof(*h_M_dense)];
@@ -1345,19 +1351,19 @@ void Geometry::Linear3DBarycentric_B_CUDA_host(){
 		}
 		*/
 
-	cudaMemcpy(d_x, x, numNodes*sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_y, y, numNodes*sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_z, z, numNodes*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_x_dist, x, numNodes*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_y_dist, y, numNodes*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_z_dist, z, numNodes*sizeof(double), cudaMemcpyHostToDevice);
 	//cudaMemcpy(nodesInElem_device, nodesInElem, numE*numNodesPerElem*sizeof(int), cudaMemcpyHostToDevice);
 
 	int max_limit = (numNodesPerElem*dim*numNodesPerElem*dim*numE);
 	int threadsPerBlock = 256;
 	int blocksPerGrid = (max_limit + threadsPerBlock - 1) / threadsPerBlock;
-	cudaDeviceProp prop;
-	cudaGetDeviceProperties(&prop, 0);
+	/*cudaDeviceProp prop;
+	cudaGetDeviceProperties(&prop, 0);*/
 	cudaMemset(d_A_dense, 0, numNodes*dim*numNodes*dim*sizeof(*d_A_dense));
 	cudaMemcpy(dev_numNodes, &numNodes, 1 * sizeof(int), cudaMemcpyHostToDevice);
-	make_K_cuda3d << <18, 243 >> >(E_vector_device, nodesInElem_device, d_x, d_y, d_z, displaceInElem_device, d_A_dense, dev_numNodes);
+	make_K_cuda3d << < 18, 243 >> >(E_vector_device, nodesInElem_device, d_x_dist, d_y_dist, d_z_dist, displaceInElem_device, d_A_dense, dev_numNodes);
 
 	cudaMemcpy(h_A_dense, d_A_dense, numNodes*dim*numNodes*dim*sizeof(*d_A_dense), cudaMemcpyDeviceToHost);
 
@@ -1561,10 +1567,12 @@ void Geometry::ApplySudoForcesBarycentric(int numP, int node_applied, int *local
 
    //int node_c = node_applied;
 
-   for (int findex = 0; findex < 2; findex++){
+   for (int findex = 0; findex < num_s_force; findex++){
 
 	   int node_c = sudo_force_index[findex];
-	   if (findex == 0){
+
+	   //******************************THIS NEEDS CHANGING **************************************//
+	  /* if (findex == 0){
 		   forceVec_x = sudo_force_value1[0];
 		   forceVec_y = sudo_force_value1[1];
 
@@ -1572,7 +1580,9 @@ void Geometry::ApplySudoForcesBarycentric(int numP, int node_applied, int *local
 	   else if (findex == 1){
 		   forceVec_x = sudo_force_value2[0];
 		   forceVec_y = sudo_force_value2[1];
-	   }
+	   }*/
+	   forceVec_x = sudo_force_value2[0];
+	   forceVec_y = sudo_force_value2[1];
 	   for (int dof = 0; dof < dim; dof++){
 		   row = displaceInElem[node_c][dof];
 
@@ -1587,7 +1597,7 @@ void Geometry::ApplySudoForcesBarycentric(int numP, int node_applied, int *local
 			   f[row] += forceVec_y;
 		   }
 		   else if (dof == 2){
-			   f[row] += 0.0 / 1728.0;
+			   f[row] += forceVec_y;
 		   }
 	   }
    }

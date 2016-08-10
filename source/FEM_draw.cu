@@ -88,7 +88,7 @@ float3 translation = make_float3(0.0, 0.0, 0.0);
 #define RAND_MAX 4095
 #endif
 int node_interested_draw1 = 100;
-int node_interested_draw2 = 101;
+int node_interested_draw2 = 150;
 
 /*****************************************************************************
 * Truncate a degree.
@@ -677,7 +677,7 @@ void drawMesh(Geometry *p){
 		
 		if (p->return_dim() == 3){
 			glLineWidth(2);
-			glColor4f(x*100, y*100, z*100, 0.5);
+			glColor4f(x*10.0, y*10.0, z*10.0, 0.5);
 #if 0
 			glBegin(GL_LINE_LOOP);
 			glVertex3f(p->return_x(node_considered1) * 400 - 200, p->return_y(node_considered1) * 400 - 200, p->return_z(node_considered1) * 400);       /* NE */
@@ -836,8 +836,13 @@ void drawMesh(Geometry *p){
 	glColor3f(0.6f, 1.0f, 0.6f);
 	glPointSize(10.0);
 
-	
-	glBegin(GL_POINTS);
+	for (int l = 0; l < 20; l++){
+		glBegin(GL_POINTS);
+		int dummy = node_interested_draw1 + l;
+		glVertex3f(p->return_x(dummy) * 20000 - 200, p->return_y(dummy) * 20000 - 200, p->return_z(dummy) * 20000);
+		//glVertex3f(p->return_x(node_interested_draw2) * 20000 - 200, p->return_y(node_interested_draw2) * 20000 - 200, p->return_z(node_interested_draw2) * 20000);
+		glEnd();
+	}
 #if 0
 	glVertex3f(p->return_x(0) * 400 - 200, p->return_y(0) * 400 - 200, p->return_z(0) * 400);
 
@@ -845,9 +850,7 @@ void drawMesh(Geometry *p){
 	glVertex3f(p->return_x(20) * 200 - 200, p->return_y(20) * 200 - 200, p->return_z(20) * 400);
 
 #endif // 0
-	glVertex3f(p->return_x(node_interested_draw1) * 20000 - 200, p->return_y(node_interested_draw1) * 20000 - 200, p->return_z(node_interested_draw1) * 20000);
-	glVertex3f(p->return_x(node_interested_draw2) * 20000 - 200, p->return_y(node_interested_draw2) * 20000 - 200, p->return_z(node_interested_draw2) * 20000);
-	glEnd();
+	
 
 	//std::cout << " X _ win: " << -(p->return_x(shortest_node) * 400-400) << " Y _ WIN : " << p->return_y(shortest_node) * 400 << std::endl;
 	if (!changeNode){
@@ -946,7 +949,7 @@ int draw_things(Geometry *p)
 		cuda_string = "cuda_unused";
 	}
 	std::ofstream time_out(cuda_string +"_"+ std::to_string(numNodes) + ".txt");
-	if (!p->get_dynamic()){
+	if (!p->get_dynamic()){ // for static fem
 		for (;;){
 
 
@@ -1047,6 +1050,7 @@ int draw_things(Geometry *p)
 			glfwPollEvents();
 			
 			std::clock_t start_K;
+			std::clock_t start_Solver;
 			start_K = std::clock();
 
 			//Solve the 2D FEM in each frame
@@ -1064,32 +1068,37 @@ int draw_things(Geometry *p)
 			//p->sudo_force_value.clear();
 			p->sudo_force_index[0] = node_interested_draw1;
 			p->sudo_force_index[1] = node_interested_draw2;
-			double divisor2 = 1000.0;
+			double divisor2 =5000.0;
+			for (int hj = 0; hj < (p->num_s_force); hj++){
+				p->sudo_force_index[hj] = node_interested_draw1 + hj;
+				//p->sudo_force_index[hj] = node_interested_draw2 + hj;
+				p->sudo_force_value1[hj] = (2.0 / divisor2);
+				//p->sudo_force_value1[1] = (2.0 / divisor2);
 
-			p->sudo_force_value1[0] = -(2.0 / divisor2);
-			p->sudo_force_value1[1] = -(2.0 / divisor2);
-
-			p->sudo_force_value2[0] = -(2.0 / divisor2);
-			p->sudo_force_value2[1] = -(2.0 / divisor2);
-			
+				p->sudo_force_value2[hj] = (2.0 / divisor2);
+				//p->sudo_force_value2[1] = (2.0 / divisor2);
+			}
 			p->make_K_matrix();
+			duration_K = (std::clock() - start_K) / (double)CLOCKS_PER_SEC;
 			//p->Linear2DBarycentric_B_CUDA_host();
 			//p->make_surface_f();
 
 
-
+			start_Solver = std::clock();
 			if (!cuda_init){
 				//p->initialize_CUDA();
 				//cuda_init = true;
 			}
 		
 			p->tt();
-			duration_K = (std::clock() - start_K) / (double)CLOCKS_PER_SEC;
-
-			time_out << duration_K<<std::endl;
+			
+			int duration_solver = (std::clock() - start_Solver) / (double)CLOCKS_PER_SEC;
+		//	time_out << "Kmatrix: " << duration_K<<std::endl;
+			
 			//std::cout << " change status : " << changeNode << std::endl;
 
-			std::cout << "Solver time ms:  " << duration_K << std::endl;
+			std::cout << "K assembly time ms:  " << duration_K << std::endl;
+			std::cout << "Solver time : " << duration_solver << std::endl;
 			//std::cout << " closet node : " << closest_Node << std::endl;
 			t++;
 			/* Check if we are still running */

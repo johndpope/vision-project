@@ -30,7 +30,9 @@ int main(void){
 	testing_geo.initialize_CUDA();
 	testing_geo.set_dynamic(false);
 	testing_geo.set_cuda_use(true);
-    //kinect_main(0, NULL,&testing_geo);
+	bool answer = testing_geo.get_cuda_use();
+
+   // kinect_main(0, NULL,&testing_geo);
 	
 	 //maain(0, NULL);
 	

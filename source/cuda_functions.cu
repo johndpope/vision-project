@@ -596,6 +596,8 @@ __global__ void make_K_cuda3d(double *E_vector, int *nodesInElem, double *x_vect
 		}
 
 
+
+
 }
 
 //This is for the global K matrix
