@@ -1,4 +1,4 @@
-#pragma once
+//#pragma once
 #include "cudaFEM_read.cuh"
 const int width = 512;
 const int height = 424;

@@ -18,12 +18,15 @@ int main(void){
 
 
 	int a;
+
 	Geometry testing_geo;
 
 	testing_geo.set_dim(3);
 	testing_geo.read_nodes();
 	testing_geo.read_elem();
 	testing_geo.read_force();
+	
+
 	testing_geo.set_YoungPoisson(30000.0, 0.49);
 	testing_geo.set_thickness(0.005);
 	testing_geo.initilizeMatrices();
@@ -31,9 +34,8 @@ int main(void){
 	testing_geo.set_dynamic(false);
 	testing_geo.set_cuda_use(true);
 	bool answer = testing_geo.get_cuda_use();
-
-   // kinect_main(0, NULL,&testing_geo);
-	
+	kinect_main(0, NULL, &testing_geo);
+  
 	 //maain(0, NULL);
 	
 

@@ -40,6 +40,24 @@
 #include "opencv2/cudaimgproc.hpp"
 
 
+////for PCL and ICP
+
+#if 1
+#include <boost/thread/thread.hpp>
+#include <pcl/common/common_headers.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/console/parse.h>
+#include <pcl/point_types.h>
+#include <pcl/registration/icp.h>
+#include <pcl/io/io.h>
+#include <pcl/visualization/cloud_viewer.h>
+#include <pcl/io/vtk_lib_io.h>
+#include <pcl/io/ply_io.h>  
+#endif // 0
+
+
 using namespace std;
 using namespace cv;
 using namespace cv::xfeatures2d;
@@ -69,6 +87,7 @@ IMultiSourceFrameReader* reader;   // Kinect data source
 CameraIntrinsics cameraIntrinsics_kinect[1];
 ICoordinateMapper* mapper;         // Converts between depth, color, and 3d coordinates
 int num_station_nodes = 13;
+Mat colorImage = Mat::zeros(colorheight, colorwidth, CV_8UC4);
 int station_nodes[13] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
 //success for camera calibration
 Mat intrinsic = Mat(3, 3, CV_32FC1);
@@ -174,18 +193,27 @@ vector<Point2f> aruco_position;//we have t+1
 vector<Point2f> aruco_postion2;
 vector<Point2f> meshnode_position;//we have t
 vector<Point2f> meshnode_position2;
-int node_interested = 250;
-int node_interested2 = 251;
+int node_interested = 20;
+int node_interested2 = 20;
 vector<Point2f> diff;//the diff vector for sudoforce 1
 vector<Point2f> diff2;// diff vector for sudoforce2
 //chessboard markers
-
+#define FEM_USE false
 
 //
 //
 ////Ptr<aruco::CharucoBoard> board_charuco = aruco::CharucoBoard::create(squaresX, squaresY, (float)squareLength, (float)markerLength_charuco, dictionary);
 //Ptr<aruco::CharucoBoard> board_charuco; //= aruco::CharucoBoard::create(squaresX, squaresY, (float)squareLength, (float)markerLength_charuco, dictionary);
 
+//PCL DECLARATIONS
+#if 1
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>());
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_new(new pcl::PointCloud<pcl::PointXYZRGB>());
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_KINECT(new pcl::PointCloud<pcl::PointXYZRGB>());
+pcl::PointCloud<pcl::PointXYZ>::Ptr xcloud(new pcl::PointCloud<pcl::PointXYZ>());
+pcl::PointCloud<pcl::PointXYZ>::Ptr xcloud_new(new pcl::PointCloud<pcl::PointXYZ>());
+boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
+#endif // 0
 
 void Threshold_Demo(int, void*)
 {
@@ -202,6 +230,34 @@ void Threshold_Demo(int, void*)
 }
 //-------------End of threshold function stuf------------------------//
 Geometry *geo_ptr;
+#if 0
+
+boost::shared_ptr<pcl::visualization::PCLVisualizer> rgbVis(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr cloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud2)
+{
+	// --------------------------------------------
+	// -----Open 3D viewer and add point cloud-----
+	// --------------------------------------------
+
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
+#if 1
+	viewer->setBackgroundColor(0, 0, 0);
+	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
+	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb2(cloud2);
+	viewer->addPointCloud<pcl::PointXYZRGB>(cloud, rgb, "sample cloud");
+	viewer->addPointCloud<pcl::PointXYZRGB>(cloud2, rgb, "sample cloud2");
+
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "sample cloud");
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "sample cloud2");
+	viewer->removePointCloud("sample cloud");
+	viewer->addCoordinateSystem(1.0);
+	viewer->initCameraParameters();
+#endif // 0
+
+	return (viewer);
+}
+#endif // 0
+
+
 
 bool initKinect() {
 	if (FAILED(GetDefaultKinectSensor(&sensor))) {
@@ -229,7 +285,8 @@ void getDepthData(IMultiSourceFrame* frame, GLubyte* dest) {
 	frameref->AcquireFrame(&depthframe);
 	if (frameref) frameref->Release();
 
-	if (!depthframe) return;
+	if (!depthframe) 
+		return;
 
 	// Get data from frame
 	unsigned int sz;
@@ -242,13 +299,45 @@ void getDepthData(IMultiSourceFrame* frame, GLubyte* dest) {
 	//mapper->MapDepthFrameToCameraSpace(width*height, buf, width*height / 2, depth2xyz_found_different_dim);
 
 	float* fdest = (float*)dest;
-	for (unsigned int i = 0; i < sz; i++) {
+	if (cloud_KINECT->size()>0)
+		cloud_KINECT->clear();
+	pcl::PointXYZRGB dummyVar;
+	//viewer->removeAllPointClouds();
+	for (unsigned int i = 0; i < sz; i=i+20) {
+#if 0
+		cloud->at(i).x = cloud->at(i).x / 100.0;
+		cloud->at(i).y = cloud->at(i).y / 100.0;
+		cloud->at(i).z = cloud->at(i).z / 100.0;  
+#endif // 0
 
-		*fdest++ = depth2xyz[i].X;
+		/*if ((depth2xyz[i].X + depth2xyz[i].Y + depth2xyz[i].Z)<100.0)*/
+		dummyVar.x = depth2xyz[i].X;
+		dummyVar.y = depth2xyz[i].Y;
+		dummyVar.z = depth2xyz[i].Z;
+		dummyVar.r = 203;
+		dummyVar.g = 230;
+		dummyVar.b = 100;
+			//cloud_KINECT->points.push_back(pcl::PointXYZ(depth2xyz[i].X, depth2xyz[i].Y, depth2xyz[i].Z));
+	
+		cloud_KINECT->points.push_back(dummyVar);
+		
+#if 0
+		* fdest++ = depth2xyz[i].X;
 		*fdest++ = depth2xyz[i].Y;
 		*fdest++ = depth2xyz[i].Z;
+#endif // 0
+
 
 	}
+	
+	viewer->updatePointCloud(cloud_KINECT, "sample cloud");
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 1, "sample cloud");
+	viewer->spinOnce();
+	boost::this_thread::sleep(boost::posix_time::microseconds(100000));
+	//viewer->spinOnce();
+	//viewer->addPointCloud<pcl::PointXYZ>(cloud_KINECT, "sample cloud");
+	//viewer->addPointCloud<pcl::PointXYZRGB>(cloud_, rgb, "sample cloud2");
 	//mapper->MapColorFrameToDepthSpace(width*height, buf_color_position, 2*width*height, depth_found);
 	mapper->MapDepthFrameToColorSpace(sz, buf, width*height, depth2rgb);
 
@@ -716,8 +805,8 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		write_counter++;*/
 		unsigned int numSquares = numCornersHor * numCornersVer;
 		Size board_sz = Size(numCornersHor, numCornersVer);
-		bool found = findChessboardCorners(I_gray_resize, board_sz, corners, CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FILTER_QUADS);
-
+		//bool found = findChessboardCorners(I_gray_resize, board_sz, corners, CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FILTER_QUADS);
+		bool found = false;
 		if (found)
 		{
 			//cornerSubPix(I, corners, Size(11, 11), Size(-1, -1), TermCriteria(CV_TERMCRIT_EPS | CV_TERMCRIT_ITER, 30, 0.1));
@@ -736,7 +825,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		}
 		//imshow("ff", I_gray_resize);
 		//-------------------ARUCO-------------------------
-		if (1){
+		if (0){
 			start_K11 = std::clock();
 
 			detectMarkers(I_gray_resize, dictionary, markerCorners, markerIds);
@@ -873,6 +962,54 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		//}
 		//imshow("good image", I_flipped);
 		//---------------ARUCO END---------------------
+		
+		
+		double c_x = instrinsics.at<double>(2);
+		double f_x = instrinsics.at<double>(0);
+		double c_y = instrinsics.at<double>(5);
+		double f_y = instrinsics.at<double>(4);
+
+		for (int h = 0; h < colorheight; h+=2){//colorheight
+			for (int w = 0; w < colorwidth; w+=2){//colorwidth
+				int index3 = h*colorwidth + w;
+				ColorSpacePoint dummycolor;
+				
+				int _X = (int)depthSpace2[index3].X;
+				int _Y = (int)depthSpace2[index3].Y;
+				if ((_X >= 0) && (_X < width) && (_Y >= 0) && (_Y < height)){
+					int depth_index = (_Y*width) + _X;
+					int index3_color = index3 * 4;
+					/*CameraSpacePoint q = depth2xyz[depth_index]*/
+					ColorSpacePoint p = depth2rgb[depth_index];
+					CameraSpacePoint world_point_camera = depth2xyz[depth_index];
+					int idx = ((int)p.X) + colorwidth*((int)p.Y);
+					double actualx = (p.X - c_x)*world_point_camera.Z / f_x;
+					double actualy = (p.Y - c_y)*world_point_camera.Z / f_y;
+
+					//if ((rgbimage[4 * idx + 0] < 120) && (rgbimage[4 * idx + 1]>120) && (rgbimage[4 * idx + 2] < 90	)	){
+					//in_disp << actualx << " " << actualy << " " << world_point_camera.Z << endl;
+					/*colorImage.data[index3_color + 0] = rgbimage[4 * idx + 0];
+					colorImage.data[index3_color + 1] = rgbimage[4 * idx + 1];*/
+					colorImage.data[index3_color + 0] = rgbimage[4 * idx +0];
+					colorImage.data[index3_color + 1] = world_point_camera.Z * 50;
+
+					colorImage.data[index3_color + 2] = rgbimage[4 * idx + 2];
+					colorImage.data[index3_color + 3] = rgbimage[4 * idx + 3];
+					//}
+
+					/*colorImage.data[index3_color + 0] = rgbimage[4 * idx + 0];
+					colorImage.data[index3_color + 1] = rgbimage[4 * idx + 1];
+					colorImage.data[index3_color + 2] = rgbimage[4 * idx + 2];*/
+					/*colorImage.data[index3_color + 0] = 0;
+					colorImage.data[index3_color + 1] = aaaa.Z*100;
+					colorImage.data[index3_color + 2] = 100;
+					colorImage.data[index3_color + 3] = rgbimage[4 * idx + 3];*/
+				}
+
+
+			}
+		}
+		imshow("fd", colorImage);
 		if (0){
 
 
@@ -990,7 +1127,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 				}
 			}
 			imshow("fd", colorImage);
-			imwrite("calibrate" + to_string(write_counter) + ".png", colorImage);
+			//imwrite("calibrate" + to_string(write_counter) + ".png", colorImage);
 			write_counter++;
 
 			//in_disp.close();
@@ -1161,7 +1298,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 				draw_mesh(geo_ptr, I);
 
 			}
-			if (markerIds.size() > 0){ //if there is an aruco marker
+			if (0){ //if there is an aruco marker
 				for (int dummy_i = 0; dummy_i < markerIds.size(); dummy_i++){
 					if (markerIds[dummy_i] == 1){
 						diff.clear();
@@ -1216,7 +1353,10 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 
 
 
+#if 0
 			get_mesh(geo_ptr);
+#endif // FEM_USE
+
 
 			//double dt = abs(std::clock() - start_K11);
 			//cout << " dt : " << dt << endl;
@@ -1225,6 +1365,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		}
 
 		imshow("original", I);
+		waitKey(1);
 
 	}
 
@@ -1347,6 +1488,7 @@ void getKinectData() {
 	color_index = 0;
 	IMultiSourceFrame* frame = NULL;
 	if (SUCCEEDED(reader->AcquireLatestFrame(&frame))) {
+#if 1
 		GLubyte* ptr;
 		glBindBuffer(GL_ARRAY_BUFFER, vboId);
 		ptr = (GLubyte*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
@@ -1368,6 +1510,8 @@ void getKinectData() {
 		calibrateCamera(object_points, image_points, I.size(), intrinsic, distCoeffs, rvecs, tvecs);
 		calibrated = true;
 		}*/
+#endif // 0
+
 
 	}
 	if (frame) frame->Release();
@@ -1386,9 +1530,9 @@ void rotateCamera() {
 
 void drawKinectData() {
 	getKinectData();
-	rotateCamera();
+	//rotateCamera();
 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	/*glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glEnableClientState(GL_COLOR_ARRAY);
 
@@ -1402,7 +1546,7 @@ void drawKinectData() {
 	glDrawArrays(GL_POINTS, 0, width*height);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
-	glDisableClientState(GL_COLOR_ARRAY);
+	glDisableClientState(GL_COLOR_ARRAY);*/
 }
 
 int kinect_main(int argc, char* argv[], Geometry *p) {
@@ -1486,14 +1630,14 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 	glBindBuffer(GL_ARRAY_BUFFER, cboId);
 	glBufferData(GL_ARRAY_BUFFER, dataSize, 0, GL_DYNAMIC_DRAW);
 
-	// Camera setup
-	glViewport(0, 0, width, height);
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluPerspective(45, width / (GLdouble)height, 0.1, 1000);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	gluLookAt(0, 0, 0, 0, 0, 1, 0, 1, 0);
+	//// Camera setup
+	//glViewport(0, 0, width, height);
+	//glMatrixMode(GL_PROJECTION);
+	//glLoadIdentity();
+	//gluPerspective(45, width / (GLdouble)height, 0.1, 1000);
+	//glMatrixMode(GL_MODELVIEW);
+	//glLoadIdentity();
+	//gluLookAt(0, 0, 0, 0, 0, 1, 0, 1, 0);
 	//const char **a;
 
 	/*Geometry testing_geo;
@@ -1574,6 +1718,170 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 
 
 
+
+	//Initialising PCL POINTS, the declaration is GLOBAL
+	pcl::PolygonMesh triangles;
+
+	std::string knot_name = "texturedknot.stl";
+	std::string duck_name = "duck_triangulate.stl";
+	std::string laura_name = "Laurana50k.stl";
+	pcl::io::loadPolygonFileSTL(knot_name, triangles);
+
+#if 1
+	pcl::fromPCLPointCloud2(triangles.cloud, *cloud);
+	pcl::fromPCLPointCloud2(triangles.cloud, *cloud_new);
+	for (int i = 0; i < cloud->size(); i++){
+		cloud->at(i).x = cloud->at(i).x / 100.0;
+		cloud->at(i).y = cloud->at(i).y / 100.0;
+		cloud->at(i).z = cloud->at(i).z / 100.0;
+		cloud->at(i).r = 255.0;
+		cloud->at(i).g = 150.0;
+		cloud->at(i).b = 150.0;
+		xcloud->points.push_back(pcl::PointXYZ(cloud->at(i).x, cloud->at(i).y, cloud->at(i).z));
+
+
+
+		cloud_new->at(i).x = (cloud_new->at(i).x / 100.0) + 1.0;
+		cloud_new->at(i).y = (cloud_new->at(i).y / 100.0) + 10.5;
+		cloud_new->at(i).z = (cloud_new->at(i).z / 100.0) + 6.0;
+
+		float theta = 3.1415 / 5.0;
+		double dummyx;
+		double dummyy;
+
+		dummyx = cloud_new->at(i).x*cosf(theta) + cloud_new->at(i).y*sinf(theta);
+		dummyy = -cloud_new->at(i).x*sinf(theta) + cloud_new->at(i).y*cosf(theta);
+		cloud_new->at(i).x = dummyx;
+
+		cloud_new->at(i).y = dummyy;
+		cloud_new->at(i).rgb = (cloud->at(i).x);
+		xcloud_new->points.push_back(pcl::PointXYZ(cloud_new->at(i).x, cloud_new->at(i).y, cloud_new->at(i).z));
+
+
+	}
+	
+	viewer->setBackgroundColor(0, 0, 0);
+	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
+	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb2(cloud_new);
+	viewer->addPointCloud<pcl::PointXYZRGB>(cloud, "sample cloud");
+	viewer->addPointCloud<pcl::PointXYZRGB>(cloud_new, rgb, "sample cloud2");
+
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "sample cloud2");
+
+	viewer->addCoordinateSystem(1.0);
+	viewer->initCameraParameters();
+	//viewer->removePointCloud("sample cloud");
+	viewer->spinOnce();
+#endif // 0
+
+
+	//viewer->removePointCloud("sample cloud");
+
+	while (1)
+	{
+		IMultiSourceFrame* frame = NULL;
+		viewer->updatePointCloud(cloud, "sample cloud");
+		//viewer->*/
+		viewer->spinOnce();
+		if (SUCCEEDED(reader->AcquireLatestFrame(&frame))) {
+			//cout << "s" << endl;
+			IDepthFrame* depthframe;
+			IDepthFrameReference* frameref = NULL;
+			frame->get_DepthFrameReference(&frameref);
+			frameref->AcquireFrame(&depthframe);
+			if (frameref) frameref->Release();
+
+			if (!depthframe)
+				cout << "error" << endl;;
+
+			// Get data from frame
+			unsigned int sz;
+			unsigned short* buf;
+
+			depthframe->AccessUnderlyingBuffer(&sz, &buf);
+
+			// Write vertex coordinates
+			mapper->MapDepthFrameToCameraSpace(width*height, buf, width*height, depth2xyz);
+			//mapper->MapDepthFrameToCameraSpace(width*height, buf, width*height / 2, depth2xyz_found_different_dim);
+
+			
+			if (cloud_KINECT->size()>0)
+				cloud_KINECT->clear();
+			pcl::PointXYZRGB dummyVar;
+			//viewer->removeAllPointClouds();
+			for (unsigned int i = 0; i < sz; i = i + 20) {
+#if 0
+				cloud->at(i).x = cloud->at(i).x / 100.0;
+				cloud->at(i).y = cloud->at(i).y / 100.0;
+				cloud->at(i).z = cloud->at(i).z / 100.0;
+#endif // 0
+
+				/*if ((depth2xyz[i].X + depth2xyz[i].Y + depth2xyz[i].Z)<100.0)*/
+				dummyVar.x = depth2xyz[i].X;
+				dummyVar.y = depth2xyz[i].Y;
+				dummyVar.z = depth2xyz[i].Z;
+				dummyVar.r = 203;
+				dummyVar.g = 230;
+				dummyVar.b = 100;
+				//cloud_KINECT->points.push_back(pcl::PointXYZ(depth2xyz[i].X, depth2xyz[i].Y, depth2xyz[i].Z));
+
+				cloud_KINECT->points.push_back(dummyVar);
+
+#if 0
+				* fdest++ = depth2xyz[i].X;
+				*fdest++ = depth2xyz[i].Y;
+				*fdest++ = depth2xyz[i].Z;
+#endif // 0
+
+
+			}
+
+			viewer->updatePointCloud(cloud_KINECT, "sample cloud");
+			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
+			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 1, "sample cloud");
+			viewer->spinOnce();
+			boost::this_thread::sleep(boost::posix_time::microseconds(100000));
+			//viewer->spinOnce();
+			//viewer->addPointCloud<pcl::PointXYZ>(cloud_KINECT, "sample cloud");
+			//viewer->addPointCloud<pcl::PointXYZRGB>(cloud_, rgb, "sample cloud2");
+			//mapper->MapColorFrameToDepthSpace(width*height, buf_color_position, 2*width*height, depth_found);
+			mapper->MapDepthFrameToColorSpace(sz, buf, width*height, depth2rgb);
+
+			mapper->MapColorFrameToDepthSpace(sz, buf, colorwidth*colorheight, depthSpace2);
+			//mapper->MapDepthPointsToColorSpace(1, &depthSpace2[0], sz, buf, 1, dummycolor);
+			// Fill in depth2rgb map
+
+
+			//
+			if (depthframe) depthframe->Release();
+		}
+		if (frame) frame->Release();
+		/*getKinectData();
+		rotateCamera();
+		;*/
+		/*getKinectData();
+		rotateCamera();
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glEnableClientState(GL_VERTEX_ARRAY);
+		glEnableClientState(GL_COLOR_ARRAY);
+
+		glBindBuffer(GL_ARRAY_BUFFER, vboId);
+		glVertexPointer(3, GL_FLOAT, 0, NULL);
+
+		glBindBuffer(GL_ARRAY_BUFFER, cboId);
+		glColorPointer(3, GL_FLOAT, 0, NULL);
+
+		glPointSize(1.0f);
+		glDrawArrays(GL_POINTS, 0, width*height);
+
+		glDisableClientState(GL_VERTEX_ARRAY);
+		glDisableClientState(GL_COLOR_ARRAY);*/
+		/*viewer->spinOnce();
+		boost::this_thread::sleep(boost::posix_time::microseconds(100000));*/
+	}
+	cloud_KINECT->points.push_back(pcl::PointXYZRGB(1.0,1.0,1.0));
+	
 	execute();
 	return 0;
 }

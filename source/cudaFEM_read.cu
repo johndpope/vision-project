@@ -1567,7 +1567,7 @@ void Geometry::ApplySudoForcesBarycentric(int numP, int node_applied, int *local
 
    //int node_c = node_applied;
 
-   for (int findex = 0; findex < num_s_force; findex++){
+   for (int findex = 0; findex < 2; findex++){
 
 	   int node_c = sudo_force_index[findex];
 
