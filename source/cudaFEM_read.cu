@@ -1363,7 +1363,7 @@ void Geometry::Linear3DBarycentric_B_CUDA_host(){
 	cudaGetDeviceProperties(&prop, 0);*/
 	cudaMemset(d_A_dense, 0, numNodes*dim*numNodes*dim*sizeof(*d_A_dense));
 	cudaMemcpy(dev_numNodes, &numNodes, 1 * sizeof(int), cudaMemcpyHostToDevice);
-	make_K_cuda3d << < 18, 243 >> >(E_vector_device, nodesInElem_device, d_x_dist, d_y_dist, d_z_dist, displaceInElem_device, d_A_dense, dev_numNodes);
+	make_K_cuda3d << < 1, 162 >> >(E_vector_device, nodesInElem_device, d_x_dist, d_y_dist, d_z_dist, displaceInElem_device, d_A_dense, dev_numNodes);
 
 	cudaMemcpy(h_A_dense, d_A_dense, numNodes*dim*numNodes*dim*sizeof(*d_A_dense), cudaMemcpyDeviceToHost);
 
@@ -1581,8 +1581,8 @@ void Geometry::ApplySudoForcesBarycentric(int numP, int node_applied, int *local
 		   forceVec_x = sudo_force_value2[0];
 		   forceVec_y = sudo_force_value2[1];
 	   }*/
-	   forceVec_x = sudo_force_value2[0];
-	   forceVec_y = sudo_force_value2[1];
+	   double forceVec_x1 = sudo_force_value2[0];
+	   double forceVec_y1 = sudo_force_value2[1];
 	   for (int dof = 0; dof < dim; dof++){
 		   row = displaceInElem[node_c][dof];
 
@@ -1591,13 +1591,13 @@ void Geometry::ApplySudoForcesBarycentric(int numP, int node_applied, int *local
 		   }
 		   //K[row][row] = 1;
 		   if (dof == 0){
-			   f[row] += forceVec_x;
+			   f[row] += forceVec_x1;
 		   }
 		   else if (dof == 1){
-			   f[row] += forceVec_y;
+			   f[row] += forceVec_y1;
 		   }
 		   else if (dof == 2){
-			   f[row] += forceVec_y;
+			   f[row] += forceVec_y1;
 		   }
 	   }
    }

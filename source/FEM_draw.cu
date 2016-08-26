@@ -87,8 +87,8 @@ float3 translation = make_float3(0.0, 0.0, 0.0);
 #ifndef RAND_MAX
 #define RAND_MAX 4095
 #endif
-int node_interested_draw1 = 100;
-int node_interested_draw2 = 150;
+int node_interested_draw1 = 20;
+int node_interested_draw2 = 20;
 
 /*****************************************************************************
 * Truncate a degree.
@@ -907,8 +907,8 @@ int draw_things(Geometry *p)
 	glfwMakeContextCurrent(window);
 
 	glfwPollEvents();
-	int num_station_nodes = 7;
-	int station_nodes[7] = { 0, 1, 2, 3, 4, 5, 6 };
+	int num_station_nodes = 1;
+	int station_nodes[1] = { 0};
 	//int station_nodes[7] = { 0, 2, 3, 40, 5, 6, 1 };
 	///-cmiss
 	double duration_K;
@@ -1068,7 +1068,7 @@ int draw_things(Geometry *p)
 			//p->sudo_force_value.clear();
 			p->sudo_force_index[0] = node_interested_draw1;
 			p->sudo_force_index[1] = node_interested_draw2;
-			double divisor2 =5000.0;
+			double divisor2 =50.0;
 			for (int hj = 0; hj < (p->num_s_force); hj++){
 				p->sudo_force_index[hj] = node_interested_draw1 + hj;
 				//p->sudo_force_index[hj] = node_interested_draw2 + hj;
@@ -1112,8 +1112,8 @@ int draw_things(Geometry *p)
 				/*p->setSudoNode(100);
 				p->setSudoForcex(1.0);
 				p->setSudoForcey(1.0);*/
-				p->sudo_force_index[0] = 300;
-				p->sudo_force_index[1] = 300;
+				p->sudo_force_index[0] = 20;
+				p->sudo_force_index[1] = 20;
 				double divisor2 = 200.0;
 
 				p->sudo_force_value1[0] = (1.0 / divisor2);
@@ -1127,8 +1127,8 @@ int draw_things(Geometry *p)
 				p->setSudoForcex(0);
 				p->setSudoForcey(0);
 				double divisor2 = 1.0;
-				p->sudo_force_index[0] = 230;
-				p->sudo_force_index[1] = 300;
+				p->sudo_force_index[0] = 20;
+				p->sudo_force_index[1] = 20;
 				p->sudo_force_value1[0] = -(0.0 / divisor2);
 				p->sudo_force_value1[1] = -(0.0 / divisor2);
 
