@@ -21,18 +21,19 @@ int main(void){
 
 	Geometry testing_geo;
 
-	testing_geo.set_dim(3);
+	testing_geo.set_dim(2);
 	testing_geo.read_nodes();
 	testing_geo.read_elem();
 	testing_geo.read_force();
 	
 
-	testing_geo.set_YoungPoisson(30000.0, 0.49);
-	testing_geo.set_thickness(0.005);
+	testing_geo.set_YoungPoisson(20000.0, 0.49);
+	testing_geo.set_thickness(0.05);
 	testing_geo.initilizeMatrices();
 	testing_geo.initialize_CUDA();
-	testing_geo.set_dynamic(false);
-	testing_geo.set_cuda_use(true);
+	//if you want the dynamic fem, put dynamic to true and cuda to false.
+	testing_geo.set_dynamic(true);
+	testing_geo.set_cuda_use(false);
 	bool answer = testing_geo.get_cuda_use();
 	kinect_main(0, NULL, &testing_geo);
   

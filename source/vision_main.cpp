@@ -71,29 +71,33 @@ using namespace aruco;
 GLuint vboId;
 GLuint cboId;
 
+const int widthd = 512;
+const int heightd = 424;
 // Intermediate Buffers
 unsigned char rgbimage[colorwidth*colorheight * 4];    // Stores RGB color image
 unsigned char bgrimage[colorwidth*colorheight * 4];    //stores bgr color image
-unsigned short bgrimage2[colorwidth*colorheight * 4];    //stores bgr color image
-unsigned short infrared_vec[width*height * 4];    //stores bgr color image
+//unsigned short bgrimage2[colorwidth*colorheight * 4];    //stores bgr color image
+//unsigned short infrared_vec[widthd*heightd * 4];    //stores bgr color image
 int is_aruco[colorwidth*colorheight];
-ColorSpacePoint color_position[width*height];
+ColorSpacePoint color_position[widthd*heightd];
 int color_index;
-ColorSpacePoint depth2rgb[width*height];             // Maps depth pixels to rgb pixels
+ColorSpacePoint depth2rgb[widthd*heightd];             // Maps depth pixels to rgb pixels
 ColorSpacePoint dummy2[colorwidth*colorheight];             // Maps depth pixels to rgb pixels
-CameraSpacePoint depth2xyz[width*height];			 // Maps depth pixels to 3d coordinates
-CameraSpacePoint depth2xyz_found[width*height];			 // Maps to the 3d coordinates of the pixels that are found
-CameraSpacePoint depth2xyz_found_different_dim[width*height / 2];
+CameraSpacePoint depth2xyz[widthd*heightd];			 // Maps depth pixels to 3d coordinates
+//CameraSpacePoint depth2xyz_found[widthd*heightd];			 // Maps to the 3d coordinates of the pixels that are found
+//CameraSpacePoint depth2xyz_found_different_dim[widthd*heightd / 2];
 DepthSpacePoint *depth_found;
 // Kinect Variables
 IKinectSensor* sensor;             // Kinect sensor
 IMultiSourceFrameReader* reader;   // Kinect data source
 CameraIntrinsics cameraIntrinsics_kinect[1];
 ICoordinateMapper* mapper;         // Converts between depth, color, and 3d coordinates
-int num_station_nodes = 1;
+int num_station_nodes = 0;
 Mat colorImage = Mat::zeros(colorheight, colorwidth, CV_8UC4);
 //int station_nodes[13] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
-int station_nodes[1] = { 50 };
+int station_nodes[1] = {0};
+//int station_nodes[16] = { 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60 }; for "TOP"
+//int station_nodes[16] = { 3    , 7  ,  11  ,  15,    19   , 23 ,   27 ,   31 ,   35  ,  39  ,  43  ,  47 ,   51   , 55 ,   59    ,63 };
 //success for camera calibration
 Mat intrinsic = Mat(3, 3, CV_32FC1);
 Mat distCoeffs;
@@ -101,7 +105,7 @@ vector< Vec3d > rvecs, tvecs, tvecs_new;
 vector<Vec3d> rvec_aruco, tvec_aruco;
 Vec3d rvec_new, tvec_new;
 Mat I = Mat(colorheight, colorwidth, CV_8UC4, &bgrimage);
-Mat I_infrared = Mat(height, width, CV_16UC1);
+Mat I_infrared = Mat(heightd, widthd, CV_16UC1);
 Mat I_flipped;// = Mat(colorheight, colorwidth, CV_8UC4, &rgbimage);
 Mat I_flipped_flipped;
 Mat I_undistorted = Mat(colorheight, colorwidth, CV_8UC4);
@@ -124,7 +128,7 @@ bool calibrated = false; // assuming camera is not calibrationed
 vector<float> pointerworld;
 vector<float> pointerlocal;
 unsigned short *buf_color_position;
-int found_colour[height*width];
+int found_colour[heightd*widthd];
 ofstream myfile;
 
 
@@ -151,9 +155,9 @@ Ptr < Dictionary > dictionary;
 vector< int > markerIds;
 vector< vector<Point2f> > markerCorners, rejectedCandidates;
 vector<vector<Point2f>> markerCorners_resize;
-vector<Point2f> aruco_center(6);
+vector<Point2f> aruco_center(4);
 vector<Point3f> circles_detected;
-
+int width_depth, height_depth;
 float markerLength = 0.1;
 Ptr<aruco::DetectorParameters> parameters = aruco::DetectorParameters::create();
 cv::Mat rvec(3, 1, cv::DataType<double>::type);
@@ -163,6 +167,8 @@ vector<Point3f> partial_cube;
 vector<Point2f> corners;
 vector<Point3d> greenLower;
 vector<Point3d> greenUpper;
+
+bool initial_pnp = true;
 //Calibration
 cv::Mat distortion(4, 1, cv::DataType<double>::type);
 cv::Mat instrinsics(3, 3, cv::DataType<double>::type);
@@ -203,11 +209,12 @@ vector<Point2f> aruco_position;//we have t+1
 vector<Point2f> aruco_postion2;
 vector<Point2f> meshnode_position;//we have t
 vector<Point2f> meshnode_position2;
-int node_interested = 20;
-int node_interested2 = 20;
+int node_interested = 18 - 1;
+int node_interested2 = 634 - 1;
 vector<Point2f> diff;//the diff vector for sudoforce 1
 vector<Point2f> diff2;// diff vector for sudoforce2
 vector<Point3f> diff3D;// diff vector for sudoforce2
+vector<Point3f> diff3D2;// diff vector for sudoforce2
 //chessboard markers
 #define FEM_USE false
 int counter = 0;
@@ -228,15 +235,17 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr mesh_generated_var(new pcl::PointCloud<pcl::
 pcl::PointCloud<pcl::PointXYZ>::Ptr xcloud(new pcl::PointCloud<pcl::PointXYZ>());
 pcl::PointCloud<pcl::PointXYZ>::Ptr xcloud_new(new pcl::PointCloud<pcl::PointXYZ>());
 pcl::PointCloud<pcl::PointXYZ>::Ptr xcloud_box_mesh(new pcl::PointCloud<pcl::PointXYZ>());
-
+pcl::registration::TransformationEstimationSVD<pcl::PointXYZ, pcl::PointXYZ>::Matrix4 transformation2;
 Eigen::Affine3f *global_initial_ptr;
 #if 1
 boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
-#elif // 0
+#else // 0
 boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer;
 #endif
 pcl::PolygonMesh *global_mesh_ptr;
 #endif // 0
+
+
 
 
 #define WRITE_ARUCO_POS 1
@@ -324,8 +333,8 @@ void getDepthData(IMultiSourceFrame* frame, GLubyte* dest) {
 	depthframe->AccessUnderlyingBuffer(&sz, &buf);
 
 	// Write vertex coordinates
-	mapper->MapDepthFrameToCameraSpace(width*height, buf, width*height, depth2xyz);
-	//mapper->MapDepthFrameToCameraSpace(width*height, buf, width*height / 2, depth2xyz_found_different_dim);
+	mapper->MapDepthFrameToCameraSpace(widthd*heightd, buf, widthd*heightd, depth2xyz);
+	//mapper->MapDepthFrameToCameraSpace(widthd*heightd, buf, widthd*heightd / 2, depth2xyz_found_different_dim);
 
 	float* fdest = (float*)dest;
 #if 0
@@ -376,8 +385,8 @@ void getDepthData(IMultiSourceFrame* frame, GLubyte* dest) {
 	//viewer->spinOnce();
 	//viewer->addPointCloud<pcl::PointXYZ>(cloud_KINECT, "sample cloud");
 	//viewer->addPointCloud<pcl::PointXYZRGB>(cloud_, rgb, "sample cloud2");
-	//mapper->MapColorFrameToDepthSpace(width*height, buf_color_position, 2*width*height, depth_found);
-	mapper->MapDepthFrameToColorSpace(sz, buf, width*height, depth2rgb);
+	//mapper->MapColorFrameToDepthSpace(widthd*heightd, buf_color_position, 2*widthd*heightd, depth_found);
+	mapper->MapDepthFrameToColorSpace(sz, buf, widthd*heightd, depth2rgb);
 
 	mapper->MapColorFrameToDepthSpace(sz, buf, colorwidth*colorheight, depthSpace2);
 	//mapper->MapDepthPointsToColorSpace(1, &depthSpace2[0], sz, buf, 1, dummycolor);
@@ -405,7 +414,7 @@ void get_mesh(Geometry *p){
 		cuda_init = true;
 		}*/
 		if (1){
-			double divisor = 500.0;
+			double divisor = 20.0;
 #if 0
 			//p->set_force_rest(true);
 			p->setSudoNode(node_interested);
@@ -455,11 +464,12 @@ void get_mesh(Geometry *p){
 			//p->sudo_force_value.clear();
 			p->sudo_force_index[0] = node_interested;
 			p->sudo_force_index[1] = node_interested2;
-			double d_est = 100.0;
-			p->sudo_force_value1[0] = -(d_est / divisor);
-			p->sudo_force_value1[1] = -(d_est / divisor);
-			p->sudo_force_value2[0] = -(d_est / divisor);
-			p->sudo_force_value2[1] = -(d_est / divisor);
+
+			double d_est = 1.0;
+			p->sudo_force_value1[0] = -(diff.at(0).x / divisor);
+			p->sudo_force_value1[1] = -(diff.at(0).y / divisor);
+			p->sudo_force_value2[0] = -(diff2.at(0).x / divisor);
+			p->sudo_force_value2[1] = -(diff2.at(0).y / divisor);
 #if 0
 			p->sudo_force_value1[0] = -(diff[0].x / divisor);
 			p->sudo_force_value1[1] = -(diff[0].y / divisor);
@@ -541,10 +551,18 @@ void get_mesh(Geometry *p){
 		if (p->return_dim() == 2){
 			//double dx = (geo_deform[1].x-geo_deform[0].x );
 			if (first_geo_init == true){
-				mesh_geometry.push_back(Point3f(((p->return_x(i)))*100.0 + 5.0, (p->return_y(i)*100.0), -1.233));
+				mesh_geometry.push_back(Point3f(((p->return_x(i))), (p->return_y(i)), 0.0));
+				dummy_var.x = p->return_x(i);
+				dummy_var.y = p->return_y(i);
+				dummy_var.z = p->return_z(i);
+				mesh_generated_var->points.push_back(dummy_var);
 			}
 			else {
-				mesh_geometry[i] = (Point3f(((p->return_x(i)))*100.0 + 5.0, (p->return_y(i)*100.0), -1.233));
+				mesh_geometry[i] = (Point3f(((p->return_x(i))), (p->return_y(i)), 0.0));
+				dummy_var.x = p->return_x(i);
+				dummy_var.y = p->return_y(i);
+				dummy_var.z = p->return_z(i);
+				mesh_generated_var->points.push_back(dummy_var);
 			}
 		}
 		else if (p->return_dim() == 3){
@@ -567,9 +585,12 @@ void get_mesh(Geometry *p){
 
 
 	}
-
 	
-	pcl::transformPointCloud(*mesh_generated_var, *mesh_generated_var,*global_initial_ptr);
+	
+	pcl::transformPointCloud(*mesh_generated_var, *mesh_generated_var, *global_initial_ptr);
+	diff3D2.clear();
+	diff3D2.push_back(Point3f(mesh_generated_var->points.at(556 - 1).x, mesh_generated_var->points.at(556 - 1).y, (mesh_generated_var->points.at(556 - 1).z)));
+
 	viewer->updatePointCloud(mesh_generated_var, "mesh generated");
 
 	viewer->spinOnce();
@@ -598,7 +619,7 @@ void draw_mesh(Geometry *p, Mat I){
 		int lineType = 8;
 
 		//GpuMat image1(Size(1902, 1080), CV_8U);
-		Scalar color_line = Scalar(20, 255, 200);
+		Scalar color_line = Scalar(200, 0, 200);
 		line(I, mesh_geometry_display[node_considered1], mesh_geometry_display[node_considered2], color_line, thickness, lineType);
 
 		line(I, mesh_geometry_display[node_considered3], mesh_geometry_display[node_considered1], color_line, thickness, lineType);
@@ -616,6 +637,7 @@ void draw_mesh(Geometry *p, Mat I){
 			line(I, mesh_geometry_display[node_considered2], mesh_geometry_display[node_considered3], color_line, thickness, lineType);
 		}
 		//not good programming, node_intersted1
+		//-----------------Getting the mesh nodes in camera space--------------//
 		if (node_considered1 == node_interested){
 			meshnode_position.push_back((mesh_geometry_display[node_considered1]));
 			circle(I, mesh_geometry_display[node_considered1], 20, Scalar(0, 100, 255), 4);
@@ -668,6 +690,13 @@ void draw_mesh(Geometry *p, Mat I){
 				else if (node_considered2 == dummy_node){
 					yes = true;
 					node_yes = node_considered2;
+				}
+				if (p->return_dim() == 3){
+					if (node_considered4 == dummy_node){
+						yes = true;
+						node_yes = node_considered4;
+
+					}
 				}
 			}
 
@@ -727,12 +756,12 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 	//colorframe->AccessRawUnderlyingBuffer(&sz, &buffer);
 	// Get data from frame
 
-	//mapper->MapColorFrameToDepthSpace(width*height, buf, width*height, dummy2);
+	//mapper->MapColorFrameToDepthSpace(widthd*heightd, buf, widthd*heightd, dummy2);
 
 	colorframe->CopyConvertedFrameDataToArray(colorwidth*colorheight * 4, rgbimage, ColorImageFormat_Rgba);
 	colorframe->CopyConvertedFrameDataToArray(colorwidth*colorheight * 4, bgrimage, ColorImageFormat_Bgra);
 	//infraredFrame->CopyFrameDataToArray(512 * 424*4,infrared_vec);
-	//infraredFrame->CopyFrameDataToArray(width*height*4, reinterpret_cast<UINT16*>(I_infrared.data) );
+	//infraredFrame->CopyFrameDataToArray(widthd*heightd*4, reinterpret_cast<UINT16*>(I_infrared.data) );
 	//colorframe->CopyConvertedFrameDataToArray(colorwidth*colorheight * 4, reinterpret_cast<BYTE*>(bgrimage2), ColorImageFormat_Bgra);
 
 	std::clock_t start_K11;
@@ -878,7 +907,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 
 
 
-		double resize_num = 2.0;
+		double resize_num = 4.0;
 
 		resize(I_gray, I_gray_resize, Size(colorwidth / resize_num, colorheight / resize_num));
 		//resize(hsv, hsv, Size(colorwidth / 4, colorheight / 4));
@@ -923,11 +952,12 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 			if (markerIds.size() > 0){
 				//	//cv::aruco::drawDetectedMarkers(image, markerCorners, markerIds);
 				int dummy_size = markerIds.size();
-				if (dummy_size > 6) {
-					markerCount_global = 6;
+				if (dummy_size==4) {
+					markerCount_global = 4;
 				}
 				else{
 					markerCount_global = dummy_size;
+					
 				}
 
 				for (unsigned int i = 0; i < markerCount_global; i++){
@@ -963,7 +993,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 						circle(I, aruco_center[i], 10, cv::Scalar(255, 0, 0), 3);
 						aruco_position.push_back(Point2f(x_ave / 4.0, y_ave / 4.0));
 					}
-					else if (markerIds[i] == 3){
+					/*else if (markerIds[i] == 3){
 						aruco_center.at(4) = (Point2f(x_ave / 4.0, y_ave / 4.0));
 						circle(I, aruco_center[i], 10, cv::Scalar(255, 0, 0), 3);
 						aruco_position.push_back(Point2f(x_ave / 4.0, y_ave / 4.0));
@@ -972,7 +1002,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 						aruco_center.at(5) = (Point2f(x_ave / 4.0, y_ave / 4.0));
 						circle(I, aruco_center[i], 10, cv::Scalar(255, 0, 0), 3);
 						aruco_position.push_back(Point2f(x_ave / 4.0, y_ave / 4.0));
-					}
+					}*/
 					//aruco_center.push_back(Point2f(x_ave / 4.0, y_ave / 4.0));
 
 					//putText(I, ".", Point((int)aruco_center[i].x, (int)aruco_center[i].y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(255, 0, 0), 2.0);
@@ -1018,8 +1048,8 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 						double actualx;
 						double actualy;
 						double actualz;
-						if ((_X >= 0) && (_X < width) && (_Y >= 0) && (_Y < height)){
-							int depth_index = (_Y*width) + _X;
+						if ((_X >= 0) && (_X < widthd) && (_Y >= 0) && (_Y < heightd)){
+							int depth_index = (_Y*widthd) + _X;
 
 							/*CameraSpacePoint q = depth2xyz[depth_index]*/
 							ColorSpacePoint p = depth2rgb[depth_index];
@@ -1065,16 +1095,30 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 					//write_counter++;
 					//in_disp.close();
 				}
-				if (dummy_aruco->points.size() >= 6){
+				if (dummy_aruco->points.size() == 4){
 					icp.setInputTarget(dummy_aruco);
 					icp.align(*xcloud_box);
+					
+					/*pcl::registration::TransformationEstimationSVD<pcl::PointXYZ, pcl::PointXYZ> TESVD;
+					TESVD.estimateRigidTransformation(*xcloud_box, *dummy_aruco, transformation2);*/
 					icp.setInputSource(xcloud_box);
-
+					
 #if 1
 					pcl::transformPointCloud(*xcloud_box_mesh, *xcloud_box_mesh, icp.getFinalTransformation());
 					Eigen::Matrix4f f_4;
 					f_4 = icp.getFinalTransformation();
-					cout << f_4 << endl;
+					
+					Eigen::Affine3f dummy_trans;
+					dummy_trans = f_4;
+					*global_initial_ptr = dummy_trans* (*global_initial_ptr);
+
+					cout << " transformation matrix rotation: " << endl;
+					
+					cout << global_initial_ptr->rotation() << endl;
+
+					cout << " transformation matrix translation: " << endl;
+
+					cout << global_initial_ptr->translation() << endl;
 					pcl::toPCLPointCloud2(*xcloud_box_mesh, global_mesh_ptr->cloud);
 					viewer->updatePolygonMesh(*global_mesh_ptr, "meshes");
 
@@ -1083,14 +1127,19 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 #endif // 0
 
 				}
-				cout << "diff vectors: " << endl;
-				diff3D.clear();
-				if (dummy_aruco->points.size() == 6){
-					for (int mn = 0; mn < 6; mn++){
+				//FOR 3D FORCES BUT NOT IMPLEMENTED YET
+				/*diff3D.clear();
+				if (dummy_aruco->points.size() == 4){
+					for (int mn = 0; mn < 4; mn++){
 						diff3D.push_back(Point3f(abs(xcloud_box->points[mn].x - dummy_aruco->points[mn].x), abs(xcloud_box->points[mn].y - dummy_aruco->points[mn].y), abs(xcloud_box->points[mn].z - dummy_aruco->points[mn].z)));
 					}
-					cout << diff3D << endl;
-				}
+					diff3D2.at(0).x = (diff3D2.at(0).x - aruco_center[2].x);
+					diff3D2.at(0).y = diff3D2.at(0).y - aruco_center[2].y;
+					
+					diff3D2.at(0).z = diff3D2.at(0).z - dummy_aruco->points[2].z;
+					cout << "diff vectors: " << endl;
+					cout << diff3D2 << endl;
+				}*/
 
 
 				/*for (unsigned int i = 0; i < markerIds.size(); i++){
@@ -1151,15 +1200,15 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		pcl::PointXYZRGB dummyVar;
 		//pcl::PointXYZRGB point_cloud_considered;
 #if 1
-		for (int h = 0; h < colorheight; h += 2){//colorheight
-			for (int w = 0; w < colorwidth; w += 2){//colorwidth
+		for (int h = 0; h < colorheight; h +=100 ){//colorheight
+			for (int w = 0; w < colorwidth; w += 100){//colorwidth
 				int index3 = h*colorwidth + w;
 				ColorSpacePoint dummycolor;
 
 				int _X = (int)depthSpace2[index3].X;
 				int _Y = (int)depthSpace2[index3].Y;
-				if ((_X >= 0) && (_X < width) && (_Y >= 0) && (_Y < height)){
-					int depth_index = (_Y*width) + _X;
+				if ((_X >= 0) && (_X < widthd) && (_Y >= 0) && (_Y < heightd)){
+					int depth_index = (_Y*widthd) + _X;
 					int index3_color = index3 * 4;
 					/*CameraSpacePoint q = depth2xyz[depth_index]*/
 					ColorSpacePoint p = depth2rgb[depth_index];
@@ -1173,7 +1222,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 					/*colorImage.data[index3_color + 0] = rgbimage[4 * idx + 0];
 					colorImage.data[index3_color + 1] = rgbimage[4 * idx + 1];*/
 					//current
-					if ((world_point_camera.Z < 1.2)){
+					if ((world_point_camera.Z < 2.0)){
 						if ((0.0 < world_point_camera.Z)){
 							//if ((rgbimage[4 * idx + 0] <150) && (rgbimage[4 * idx + 1] > 100) && (rgbimage[4 * idx + 2] < 150)){
 							colorImage.data[index3_color + 0] = rgbimage[4 * idx + 0]; // i assume here that colorimage is bgr?
@@ -1210,7 +1259,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 
 			}
 		}
-#endif // 0
+#endif // 0a
 
 
 
@@ -1227,7 +1276,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 
 		//cuda::cvtColor(input_gpu, output_gpu, COLOR_RGBA2GRAY);
 
-		//output_gpu.download(I_gray2);
+		//output_gpu.download(I_gray2);d
 		//detectMarkers(I_gray2, dictionary, markerCorners, markerIds);
 		imshow("fd", colorImage);
 
@@ -1326,8 +1375,8 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 
 					int _X = (int)depthSpace2[index3].X;
 					int _Y = (int)depthSpace2[index3].Y;
-					if ((_X >= 0) && (_X < width) && (_Y >= 0) && (_Y < height)){
-						int depth_index = (_Y*width) + _X;
+					if ((_X >= 0) && (_X < widthd) && (_Y >= 0) && (_Y < heightd)){
+						int depth_index = (_Y*widthd) + _X;
 						int index3_color = index3 * 4;
 						/*CameraSpacePoint q = depth2xyz[depth_index]*/
 						ColorSpacePoint p = depth2rgb[depth_index];
@@ -1379,7 +1428,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 			/*imshow("color image", colorImage);
 			imwrite(to_string(write_counter) + ".png", I_inrangeyellow);
 			write_counter++;*/
-
+			
 
 			for (int i = 0; i < contours.size(); i++)
 			{
@@ -1398,8 +1447,8 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 
 						int _X = (int)((depthSpace2[index3].X));
 						int _Y = (int)((depthSpace2[index3].Y));
-						if ((_X >= 0) && (_X < width) && (_Y >= 0) && (_Y < height)){
-							int depth_index = (_Y*width) + _X;
+						if ((_X >= 0) && (_X < widthd) && (_Y >= 0) && (_Y < heightd)){
+							int depth_index = (_Y*widthd) + _X;
 							int index3_color = index3 * 4;
 							CameraSpacePoint q = depth2xyz[depth_index];
 							ColorSpacePoint p = depth2rgb[depth_index];
@@ -1528,8 +1577,14 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		 diff2.push_back(Point2f(0.0, 0.0));*/
 			//solvePnP(Mat(geo_deform), Mat(tracking_colors), instrinsics, distortion, rvec_new, tvec_new, false);
 			if (1){
-				if (aruco_center.size() == partial_cube.size())
-					solvePnP(Mat(partial_cube), Mat(aruco_center), instrinsics, distortion, rvec_new, tvec_new, false);
+				if (initial_pnp){
+					if (markerCount_global == partial_cube.size()){
+						solvePnP(Mat(partial_cube), Mat(aruco_center), instrinsics, distortion, rvec_new, tvec_new, false);
+						
+						initial_pnp = false;
+					}
+
+				}
 				projectPoints(mesh_geometry, rvec_new, tvec_new, instrinsics, distortion, mesh_geometry_display);
 #if 0
 				for (int j_dummy = 0; j_dummy < mesh_geometry_display.size(); j_dummy++){
@@ -1542,7 +1597,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 				draw_mesh(geo_ptr, I);
 
 		}
-			if (0){ //if there is an aruco marker
+			if (1){ //if there is an aruco marker
 				for (int dummy_i = 0; dummy_i < markerIds.size(); dummy_i++){
 					if (markerIds[dummy_i] == 1){
 						diff.clear();
@@ -1622,7 +1677,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 
 	int found_index = 0;
 	float* fdest = (float*)dest;
-	for (int i = 0; i < width*height; i++) {
+	for (int i = 0; i < widthd*heightd; i++) {
 
 		ColorSpacePoint p = depth2rgb[i];
 		CameraSpacePoint q = depth2xyz[i];
@@ -1793,7 +1848,7 @@ void drawKinectData() {
 	glColorPointer(3, GL_FLOAT, 0, NULL);
 
 	glPointSize(1.0f);
-	glDrawArrays(GL_POINTS, 0, width*height);
+	glDrawArrays(GL_POINTS, 0, widthd*heightd);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_COLOR_ARRAY);*/
@@ -1830,7 +1885,6 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 	corners.push_back(Point2f(0.0, 0.0));
 	corners.push_back(Point2f(0.0, 0.0));
 	corners.push_back(Point2f(0.0, 0.0));
-
 	corners.push_back(Point2f(0.0, 0.0));
 
 	mesh_geometry_display.push_back(Point2f(0.0, 0.0));
@@ -1859,7 +1913,7 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 	myfile.open("results.txt");
 	//getting intrinsic depth camera values
 	mapper->GetDepthCameraIntrinsics(cameraIntrinsics_kinect);
-	buf_color_position = new unsigned short[2 * width*height];
+	buf_color_position = new unsigned short[2 * widthd*heightd];
 	/*cameraIntrinsics_kinect->FocalLengthX = 5.9421434211923247e+02;
 	cameraIntrinsics_kinect->FocalLengthY = 5.9104053696870778e+02;
 	cameraIntrinsics_kinect->PrincipalPointX = 3.3930780975300314e+02;
@@ -1872,7 +1926,7 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 	cout << "Principal Point y:" << cameraIntrinsics_kinect->PrincipalPointY << endl;
 
 	// Set up array buffers
-	const int dataSize = width*height * 3 * 4;
+	const int dataSize = widthd*heightd * 3 * 4;
 	glGenBuffers(1, &vboId);
 	glBindBuffer(GL_ARRAY_BUFFER, vboId);
 	glBufferData(GL_ARRAY_BUFFER, dataSize, 0, GL_DYNAMIC_DRAW);
@@ -1880,6 +1934,8 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 	glBindBuffer(GL_ARRAY_BUFFER, cboId);
 	glBufferData(GL_ARRAY_BUFFER, dataSize, 0, GL_DYNAMIC_DRAW);
 
+
+	diff3D2.push_back(Point3f(0, 0, 0));
 	//// Camera setup
 	//glViewport(0, 0, width, height);
 	//glMatrixMode(GL_PROJECTION);
@@ -1929,14 +1985,41 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 
 	p->set_beta1(0.9); // if beta_2 >= beta1 and beta > 1/2 then the time stepping scheme is unconditionally stable.
 	p->set_beta2(0.9);
-	p->set_dt(0.5);
-	p->set_dynamic_alpha(1.3);
-	p->set_dynamic_xi(10.3);
+	p->set_dt(0.1);
+	p->set_dynamic_alpha(0.2);
+	p->set_dynamic_xi(0.23);
 	diff.push_back(Point2f(0.0, 0.0));
 	diff2.push_back(Point2f(0.0, 0.0));
 	//global_geo.initialize_CUDA
 	display_counter = 0;
 	first_geo_init = true;
+	Eigen::Affine3f transform_2 = Eigen::Affine3f::Identity();
+	// Define a translation of 2.5 meters on the x axis.
+	
+	Eigen::Matrix4f transform_initial = Eigen::Matrix4f::Identity();
+
+	transform_initial(0, 0) = 0.99999;
+	transform_initial(1, 1) = 0.99999;
+	transform_initial(2, 2) = 0.99999;
+
+	transform_initial(0, 1) = 0.00255439;
+	transform_initial(0, 2) = 0.00594739;
+	transform_initial(0, 3) = -0.00488;
+
+
+	transform_initial(1, 0) = -0.00255439;
+	transform_initial(1, 2) = -0.00932893;
+	transform_initial(1, 3) = 0.00725061;
+
+	transform_initial(2, 0) = -0.00597098;
+	transform_initial(2, 1) = 0.00931379;
+	transform_initial(2, 3) = -0.0018118;
+	
+
+	transform_2.translation() << 0.0538385, 0.266005, 0.948146;
+	
+	//transform_2.rotate(Eigen::AngleAxisf(1.7724, Eigen::Vector3f(0.1891  ,  0.3916  ,  0.6310)));
+	global_initial_ptr = &transform_2;
 	get_mesh(geo_ptr);
 
 
@@ -2054,8 +2137,8 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 			depthframe->AccessUnderlyingBuffer(&sz, &buf);
 
 			// Write vertex coordinates
-			mapper->MapDepthFrameToCameraSpace(width*height, buf, width*height, depth2xyz);
-			//mapper->MapDepthFrameToCameraSpace(width*height, buf, width*height / 2, depth2xyz_found_different_dim);
+			mapper->MapDepthFrameToCameraSpace(widthd*heightd, buf, widthd*heightd, depth2xyz);
+			//mapper->MapDepthFrameToCameraSpace(widthd*heightd, buf, widthd*heightd / 2, depth2xyz_found_different_dim);
 
 
 			if (cloud_KINECT->size() > 0)
@@ -2097,8 +2180,8 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 			//viewer->spinOnce();
 			//viewer->addPointCloud<pcl::PointXYZ>(cloud_KINECT, "sample cloud");
 			//viewer->addPointCloud<pcl::PointXYZRGB>(cloud_, rgb, "sample cloud2");
-			//mapper->MapColorFrameToDepthSpace(width*height, buf_color_position, 2*width*height, depth_found);
-			mapper->MapDepthFrameToColorSpace(sz, buf, width*height, depth2rgb);
+			//mapper->MapColorFrameToDepthSpace(widthd*heightd, buf_color_position, 2*widthd*heightd, depth_found);
+			mapper->MapDepthFrameToColorSpace(sz, buf, widthd*heightd, depth2rgb);
 
 			mapper->MapColorFrameToDepthSpace(sz, buf, colorwidth*colorheight, depthSpace2);
 			//mapper->MapDepthPointsToColorSpace(1, &depthSpace2[0], sz, buf, 1, dummycolor);
@@ -2125,7 +2208,7 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 		glColorPointer(3, GL_FLOAT, 0, NULL);
 
 		glPointSize(1.0f);
-		glDrawArrays(GL_POINTS, 0, width*height);
+		glDrawArrays(GL_POINTS, 0, widthd*heightd);
 
 		glDisableClientState(GL_VERTEX_ARRAY);
 		glDisableClientState(GL_COLOR_ARRAY);*/
@@ -2134,51 +2217,61 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 }
 
 	//making a box to fit
-	double h = 0.06332;
+	/*double h = 0.06332;
 	double d = 0.1224;
+	double w = 0.14364;*/
+double d = 0.109;
+double h = 0.17338;
 	double w = 0.14364;
-	xcloud_box->points.push_back(pcl::PointXYZ(0.0, 0.0, 0.0));
 	xcloud_box->points.push_back(pcl::PointXYZ(d, 0, 0.0));
+	xcloud_box->points.push_back(pcl::PointXYZ(0.0, 0.0, 0.0));
+
 
 	xcloud_box->points.push_back(pcl::PointXYZ(0.0, h, 0.0));
 	//xcloud_box->points.push_back(pcl::PointXYZ(0.0, h/2.0, 0.0));
+#if 0
 	xcloud_box->points.push_back(pcl::PointXYZ(0.0, 0.0, w));
+	xcloud_box->points.push_back(pcl::PointXYZ(d, 0.0, w));
+#endif // 0
 
 	xcloud_box->points.push_back(pcl::PointXYZ(d, h, 0.0));
 
 
 
-	xcloud_box->points.push_back(pcl::PointXYZ(d, 0.0, w));
 
 
-
-
-	partial_cube.push_back(cv::Point3f(0.0, 0.0, 0.0));
 
 	partial_cube.push_back(cv::Point3f(d, 0, 0.0));
 
+	partial_cube.push_back(cv::Point3f(0.0, 0.0, 0.0));
+
+	
+
 	partial_cube.push_back(cv::Point3f(0.0, h, 0.0));
 	//xcloud_box->points.push_back(pcl::PointXYZ(0.0, h/2.0, 0.0));
+#if 0
 	partial_cube.push_back(cv::Point3f(0.0, 0.0, w));
+	partial_cube.push_back(cv::Point3f(d, 0.0, w));
+#endif // 0
 
 	partial_cube.push_back(cv::Point3f(d, h, 0.0));
 
 
-	partial_cube.push_back(cv::Point3f(d, 0.0, w));
 
 
 
 
+	
 	/*xcloud_box->points.push_back(pcl::PointXYZ(0.0, h, w));
 	xcloud_box->points.push_back(pcl::PointXYZ(d, h, w));*/
-	for (int i = 0; i < xcloud_box->points.size(); i++){
-		xcloud_box->points[i].x = xcloud_box->points[i].x + 0.2064;
-		xcloud_box->points[i].y = xcloud_box->points[i].y + 0.1614;
-		xcloud_box->points[i].z = xcloud_box->points[i].z + 0.7764;
+	//for (int i = 0; i < xcloud_box->points.size(); i++){
+	//	xcloud_box->points[i].x = xcloud_box->points[i].x;
+	//	xcloud_box->points[i].y = xcloud_box->points[i].y;
+	//	xcloud_box->points[i].z = xcloud_box->points[i].z;
 
-	}
+	//}
 
-
+	//pcl::transformPointCloud(*xcloud_box, *xcloud_box, transform_initial);
 
 	viewer->addPointCloud(xcloud_box, "box");
 	mesh_generated_var->points.push_back(pcl::PointXYZ(0.0, 0.0, 0.0));
@@ -2196,26 +2289,26 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 	std::string cube_name = "boxpcl.obj";
 	pcl::io::loadPolygonFileOBJ(cube_name, mesh);
 
-
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 1.0, 0.0, 0.0, "mesh generated");
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,5, "mesh generated");
 	viewer->addPolygonMesh(mesh, "meshes", 0);
 	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, 0.5, 0.2, 0.7, "meshes");
 	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.5, "meshes");
 #endif // 0
 
 	mesh.polygons[0].vertices[0] = 1;
-	Eigen::Affine3f transform_2 = Eigen::Affine3f::Identity();
-	// Define a translation of 2.5 meters on the x axis.
-	transform_2.translation() << 0.2064, 0.1614, 0.7764;
-	global_initial_ptr = &transform_2;
+	
 	// The same rotation matrix as before; theta radians arround Z axis
 
 	pcl::fromPCLPointCloud2(mesh.cloud, *xcloud_box_mesh);
-	pcl::transformPointCloud(*xcloud_box_mesh, *xcloud_box_mesh, transform_2);
-	pcl::transformPointCloud(*mesh_generated_var, *mesh_generated_var, transform_2);
+	pcl::transformPointCloud(*xcloud_box_mesh, *xcloud_box_mesh, *global_initial_ptr);
+	pcl::transformPointCloud(*xcloud_box, *xcloud_box, *global_initial_ptr);
+	pcl::transformPointCloud(*mesh_generated_var, *mesh_generated_var, *global_initial_ptr);
 	pcl::toPCLPointCloud2(*xcloud_box_mesh, mesh.cloud);
 	viewer->updatePolygonMesh(mesh, "meshes");
 	global_mesh_ptr = &mesh;
 #endif // 0 //////////////////////////////LARGE IF
+	
 	//pcl::transformPointCloud()
 	execute();
 	return 0;

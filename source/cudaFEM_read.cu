@@ -28,6 +28,7 @@
 #define nodesDisplacementX(dof,node,dimension) (dof + node*dimension)
 Geometry::Geometry(){
 	std::cout << "Geometry Object created" << std::endl;
+	cuda_use = false;
 }
 
 Geometry::~Geometry(){
@@ -110,15 +111,21 @@ void Geometry::read_nodes(){
 	y = new double[numNodes];
 	z = new double[numNodes];
 
+	x_init = new double[numNodes];
+	y_init = new double[numNodes];
+
 	if (dim == 3){
 
 		for (int i = 0; i < numNodes; i++){
 			in_matrix >> x[i] >> y[i] >> z[i];
+			
 		}
 	}
 	else if(dim ==2){
 		for (int i = 0; i < numNodes; i++){
 			in_matrix >> x[i] >> y[i];
+			x_init[i] = x[i];
+			y_init[i] = y[i];
 			z[i] = 0;
 		}
 	}
@@ -169,7 +176,7 @@ void Geometry::read_elem(){
 		}
 	}
 	E_vector_host = new double[numE*numNodesPerElem*dim*numNodesPerElem*dim];
-	cudaMalloc((void**)&E_vector_device, numE*numNodesPerElem*dim*numNodesPerElem*dim*sizeof(double));
+	cudaMalloc((void**)&E_vector_device, numE*numNodesPerElem*dim*numNodesPerElem*dim*sizeof(*E_vector_device));
 	//Populating the nodesinelem matrix
 	for (int e = 0; e < numE; e++) {
 		for (int i = 0; i < numNodesPerElem; i++)
@@ -266,9 +273,9 @@ void Geometry::initilizeMatrices(){
 	cudaMalloc((void**)&d_z, numNodes*sizeof(double));
 #endif // 0
 
-	cudaMalloc((void**)&d_x_dist, numNodes*sizeof(double));
-	cudaMalloc((void**)&d_y_dist, numNodes*sizeof(double));
-	cudaMalloc((void**)&d_z_dist, numNodes*sizeof(double));
+	cudaMalloc((void**)&d_x_dist, numNodes*sizeof(*d_x_dist));
+	cudaMalloc((void**)&d_y_dist, numNodes*sizeof(*d_x_dist));
+	cudaMalloc((void**)&d_z_dist, numNodes*sizeof(*d_x_dist));
 	K = new double*[numNodes*dim];
 	h_A_dense = new float[numNodes*dim*numNodes*dim*sizeof(*h_A_dense)];
 	h_M_dense = new double[numNodes*dim*numNodes*dim*sizeof(*h_M_dense)];
@@ -307,6 +314,11 @@ void Geometry::make_K_matrix(){
 	start_K_local1 = std::clock();
 	bool cuda_use = get_cuda_use();
 	//bool cuda_use = true;
+	std::clock_t start_K_actual;
+	start_K_actual = std::clock();
+
+
+	start_K_global = std::clock();
 	if (cuda_use){
 		
 		if (dim == 2){
@@ -331,12 +343,16 @@ void Geometry::make_K_matrix(){
 			}
 		}
 	}
-	start_K_global = std::clock();
+
+	
+	
 	double duration_K_local = (std::clock() - start_K_local1) / (double)CLOCKS_PER_SEC;
 	
 	if (!cuda_use)
 		AssembleGlobalElementMatrixBarycentric(numNodes*dim, numE, numNodesPerElem, nodesInElem, E, M, h_A_dense, h_M_dense, displaceInElem);
 	double duration_K_global = (std::clock() - start_K_global) / (double)CLOCKS_PER_SEC;
+
+	//std::cout << " CUDA K ASSEMBLE: " << duration_K_global << std::endl;
 	//ApplyEssentialBoundaryConditionsBarycentric(numNodes*dim, numForceBC, localcoordForce, elemForce, forceVec_x, forceVec_y, f, K, nodesInElem, thickness, x, y, displaceInElem);
 	//ApplyEssentialBoundaryConditionsBarycentric(numNodes*dim, sudo_node_force, localcoordForce, elemForce, sudo_force_x, sudo_force_y, f, K, nodesInElem, thickness, x, y, displaceInElem);
 	ApplySudoForcesBarycentric(numNodes*dim, sudo_node_force, localcoordForce, elemForce, sudo_force_x, sudo_force_y, f, nodesInElem, thickness, x, y, displaceInElem);
@@ -456,7 +472,7 @@ void Geometry::initialize_dynamic(){
 void Geometry::update_dynamic_vectors(){
 	
 	for (int i = 0; i < numNodes*dim; i++){
-		u[i] = u[i] + dt*u_dot[i] + (dt*dt / 2.0)*((1 - beta_2)*u_doubledot_old[i] + beta_2*u_doubledot[i]);
+		u[i] =u[i]+dt*u_dot[i] + (dt*dt / 2.0)*((1 - beta_2)*u_doubledot_old[i] + beta_2*u_doubledot[i]);
 		u_dot[i] = u_dot[i] + dt*((1 - beta_1)*u_doubledot_old[i] + beta_1*u_doubledot[i]);
 	}
 
@@ -467,18 +483,38 @@ void Geometry::update_dynamic_vectors(){
 }
 
 void Geometry::update_dynamic_xyz(){
-	/*for (int j = 0; j < numNodesZero; j++){
+	for (int j = 0; j < numNodesZero; j++){
 		int row1 = displaceInElem[vector_zero_nodes[j]][0];
 		int row2 = displaceInElem[vector_zero_nodes[j]][1];
 		u[row1] = 0;
 		u[row2] = 0;
-	}*/
+	}
+	//int row1, row2;
+	//for (int i = 0; i < numNodesZero; i++){
+	//	row1 = displaceInElem[vector_zero_nodes[i]][0];
+	//	row2 = displaceInElem[vector_zero_nodes[i]][1];
+	//	
+	//	u[row1] = u[row2] = 0;
+	//}
+	///*for (int i = 0; i < numNodes; i++) {
+	// //	u[180] = u[181] = 0.0;
+
+	//	double d = (x_init[i] - x[i])*(x_init[i] - x[i]) + (y_init[i] - y[i])*(y_init[i] - y[i]);
+	//	if (d > 0.00001){
+	//		u[i * dim] = 0;
+	//		u[i * dim + 1] = 0;
+	//	}
+
+	//}*/
+
+	//}
+	//
 	for (int i = 0; i < numNodes; i++) {
-		
+		//u[180] = u[181] = 0.0;
 		x[i] = x[i] + u[i * dim];
 		y[i] = y[i] + u[i * dim + 1];
 		
-
+		
 	}
 }
 void Geometry::update_vector(){ //solve Ax=b for the dynamics case
@@ -893,13 +929,13 @@ void Geometry::Linear2DBarycentric_D(double **term, double nu, double youngE){
 	term[0][1] = term[1][0] = nu;
 	term[2][2] = (1 - nu) / 2;*/
 
-#if 0 // for plane stress
+#if 1 // for plane stress
 	term[0][0] = term[1][1] = 1.0;
 	term[0][1] = term[1][0] = nu;
 	term[2][2] = (1 - nu) / 2.0;  
 #endif // 0
 
-#if 1 //for plane strain
+#if 0 //for plane strain
 	term[0][0] = 1.0;
 
 	term[1][1] = nu;
@@ -1053,10 +1089,10 @@ void Geometry::AssembleLocalElementMatrixBarycentric2D(int elem_n,int *nodes,int
 
 
 			}
-#if 0 // for plain stress
+#if 1 // for plain stress
 			stress[row] = stress[row] * (youngE / ((1.0 - nu*nu)))*thickness*(J / 2.0);
 #endif // 0 // for plain stress
-#if 1 // for plain strain
+#if 0 // for plain strain
 			stress[row] = stress[row] * (youngE / ((1.0+nu)*(1-2*nu)))*thickness*(J / 2.0);
 #endif // 0 // for plain stress
 		}
@@ -1342,8 +1378,8 @@ void Geometry::Linear3DBarycentric_B_CUDA_host(){
 	//dim3 threads(1, (int)(32 * 15));
 
 	//working 2d cuda
-	dim3 blocks(72, 30);//numE / (dim)
-	dim3 threads(2, numE / 30);
+	dim3 blocks(84, 196);//numE / (dim)
+	dim3 threads(12, 12);
 	/*for (int j = 0; j < numE;j++){
 		for (int i = 0; i < numNodesPerElem; i++){
 		nodesInElem_device[j][i] = nodesInElem[j][i];
@@ -1351,9 +1387,9 @@ void Geometry::Linear3DBarycentric_B_CUDA_host(){
 		}
 		*/
 
-	cudaMemcpy(d_x_dist, x, numNodes*sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_y_dist, y, numNodes*sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_z_dist, z, numNodes*sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_x_dist, x, numNodes*sizeof(*d_x_dist), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_y_dist, y, numNodes*sizeof(*d_x_dist), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_z_dist, z, numNodes*sizeof(*d_x_dist), cudaMemcpyHostToDevice);
 	//cudaMemcpy(nodesInElem_device, nodesInElem, numE*numNodesPerElem*sizeof(int), cudaMemcpyHostToDevice);
 
 	int max_limit = (numNodesPerElem*dim*numNodesPerElem*dim*numE);
@@ -1363,10 +1399,14 @@ void Geometry::Linear3DBarycentric_B_CUDA_host(){
 	cudaGetDeviceProperties(&prop, 0);*/
 	cudaMemset(d_A_dense, 0, numNodes*dim*numNodes*dim*sizeof(*d_A_dense));
 	cudaMemcpy(dev_numNodes, &numNodes, 1 * sizeof(int), cudaMemcpyHostToDevice);
-	make_K_cuda3d << < 1, 162 >> >(E_vector_device, nodesInElem_device, d_x_dist, d_y_dist, d_z_dist, displaceInElem_device, d_A_dense, dev_numNodes);
-
-	cudaMemcpy(h_A_dense, d_A_dense, numNodes*dim*numNodes*dim*sizeof(*d_A_dense), cudaMemcpyDeviceToHost);
-
+	
+	make_K_cuda3d << < 19, 114 >> >(E_vector_device, nodesInElem_device, d_x_dist, d_y_dist, d_z_dist, displaceInElem_device, d_A_dense, dev_numNodes);
+	
+	std::clock_t cuda_K;
+	cuda_K = std::clock();
+	//cudaMemcpy(h_A_dense, d_A_dense, numNodes*dim*numNodes*dim*sizeof(*d_A_dense), cudaMemcpyDeviceToHost);
+	double duration_K = (std::clock() - cuda_K) / (double)CLOCKS_PER_SEC;
+	std::cout << "cuda k assmeble: " << duration_K << std::endl;
 	//cudaMemcpy(E_vector_host, E_vector_device, numNodesPerElem*dim*numNodesPerElem*dim*numE*sizeof(double), cudaMemcpyDeviceToHost);
 	//cudaMemcpy(x, d_x, numNodes*sizeof(double), cudaMemcpyDeviceToHost);
 	//cudaMemcpy(nodesInElem_host, nodesInElem_device, numE*numNodesPerElem*sizeof(int), cudaMemcpyDeviceToHost);
@@ -1566,23 +1606,24 @@ void Geometry::ApplySudoForcesBarycentric(int numP, int node_applied, int *local
    //cout << endl << "length: " << length << endl;
 
    //int node_c = node_applied;
-
+   double f1, f2;
    for (int findex = 0; findex < 2; findex++){
 
 	   int node_c = sudo_force_index[findex];
 
 	   //******************************THIS NEEDS CHANGING **************************************//
-	  /* if (findex == 0){
-		   forceVec_x = sudo_force_value1[0];
-		   forceVec_y = sudo_force_value1[1];
+	   
+	   if (findex == 0){
+		   f1 = sudo_force_value1[0];
+		   f2 = sudo_force_value1[1];
 
 	   }
 	   else if (findex == 1){
-		   forceVec_x = sudo_force_value2[0];
-		   forceVec_y = sudo_force_value2[1];
-	   }*/
-	   double forceVec_x1 = sudo_force_value2[0];
-	   double forceVec_y1 = sudo_force_value2[1];
+		   f1 = sudo_force_value2[0];
+		   f2 = sudo_force_value2[1];
+	   }
+	   /*double forceVec_x1 = sudo_force_value2[0];
+	   double forceVec_y1 = sudo_force_value2[1];*/
 	   for (int dof = 0; dof < dim; dof++){
 		   row = displaceInElem[node_c][dof];
 
@@ -1591,13 +1632,13 @@ void Geometry::ApplySudoForcesBarycentric(int numP, int node_applied, int *local
 		   }
 		   //K[row][row] = 1;
 		   if (dof == 0){
-			   f[row] += forceVec_x1;
+			   f[row] += f1;
 		   }
 		   else if (dof == 1){
-			   f[row] += forceVec_y1;
+			   f[row] += f2;
 		   }
 		   else if (dof == 2){
-			   f[row] += forceVec_y1;
+			  // f[row] += forceVec_y1;
 		   }
 	   }
    }
@@ -1621,21 +1662,40 @@ void Geometry::set_zero_nodes(int *points){
 
 void Geometry::set_zero_AxB(void){
 	int row1, row2;
+#if 1
 	for (int i = 0; i < numNodesZero; i++){
 		row1 = displaceInElem[vector_zero_nodes[i]][0];
 		row2 = displaceInElem[vector_zero_nodes[i]][1];
 		for (int col = 0; col < Ncols; col++){
-			
+
 			L[IDX2C(col, row1, N)] = 0.0;
 			L[IDX2C(col, row2, N)] = 0.0;
 
 		}
 		L[IDX2C(row1, row1, N)] = 1.0;
 		L[IDX2C(row2, row2, N)] = 1.0;
-		b_rhs[row1] =  0.0;
+		b_rhs[row1] = 0.0;
 		b_rhs[row2] = 0.0;
 	}
 
+#else
+	for (int i = 0; i < numNodesZero; i++){
+		row1 = displaceInElem[vector_zero_nodes[i]][0];
+		row2 = displaceInElem[vector_zero_nodes[i]][1];
+		for (int col = 0; col < Ncols; col++){
+
+			h_A_dense[IDX2C(col, row1, N)] = 0.0;
+			h_A_dense[IDX2C(col, row2, N)] = 0.0;
+
+		}
+		h_A_dense[IDX2C(row1, row1, N)] = 1.0;
+		h_A_dense[IDX2C(row2, row2, N)] = 1.0;
+		/*f[row1] = 0.0;
+		f[row2] = 0.0;*/
+		b_rhs[row1] = 0.0;
+		b_rhs[row2] = 0.0;
+	}
+#endif // 0
 	
 #if 0
 	row1 = displaceInElem[sudo_force_index[0]][0];
@@ -1723,6 +1783,7 @@ int Geometry::tt()
 	//	}
 
 	//}
+#if 1
 	for (int col = 0; col < Ncols; col++){
 
 		h_A_dense[IDX2C(col, 0, N)] = 0;
@@ -1736,23 +1797,33 @@ int Geometry::tt()
 	if (dim == 3){
 		h_A_dense[IDX2C(2, 2, N)] = 1.0;
 	}
+	set_zero_AxB();
 
 
-
-	/*std::ofstream writenodes("global_K.txt");
+#if 0
+	std::ofstream writenodes("global_K.txt");
 
 	for (int j = 0; j < N; j++){
-	for (int i = 0; i < N; i++){
-	writenodes << h_A_dense[IDX2C(i, j, N)] << " ";
-	}
-	writenodes << std::endl;
+		for (int i = 0; i < N; i++){
+			writenodes << h_A_dense[IDX2C(j, i, N)] << " ";
+		}
+		writenodes << std::endl;
 	}
 
-	writenodes.close();*/
+	writenodes.close();
+#endif // 0
+
 
 	// --- Create device array and copy host array to it
-
+	/*for (int j = 0; j < 20; j++){
+		for (int i = 0; i < 20; i++){
+		std::cout << h_A_dense[IDX2C(j, i, N)] << std::endl;
+		}
+		std::cout<<std::endl;
+		}*/
 	gpuErrchk(cudaMemcpy(d_A_dense, h_A_dense, Nrows * Ncols * sizeof(*d_A_dense), cudaMemcpyHostToDevice));
+
+#endif // 0
 
 	// --- Descriptor for sparse matrix A
 
@@ -1807,6 +1878,8 @@ int Geometry::tt()
 	else {
 		h_x[0] = h_x[1] =  0;
 	}
+
+	
 
 	float *d_x;        gpuErrchk(cudaMalloc(&d_x, Nrows * sizeof(float)));
 	gpuErrchk(cudaMemcpy(d_x, h_x, Nrows * sizeof(float), cudaMemcpyHostToDevice));

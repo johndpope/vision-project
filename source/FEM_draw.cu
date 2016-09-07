@@ -731,6 +731,35 @@ void drawMesh(Geometry *p){
 			glVertex3f(p->return_x(node_considered3) * 20000 - 200, p->return_y(node_considered3) * 20000 - 200, p->return_z(node_considered3) * 20000);
 			glEnd();
 
+
+			glColor4f(x*10.0, y*10.0, z*10.0, 0.0);
+			if (false){
+				glBegin(GL_TRIANGLES);
+				glVertex3f(p->return_x(node_considered1) * 20000 - 200, p->return_y(node_considered1) * 20000 - 200, p->return_z(node_considered1) * 20000);       /* NE */
+				glVertex3f(p->return_x(node_considered2) * 20000 - 200, p->return_y(node_considered2) * 20000 - 200, p->return_z(node_considered2) * 20000);       /* NE */
+				glVertex3f(p->return_x(node_considered3) * 20000 - 200, p->return_y(node_considered3) * 20000 - 200, p->return_z(node_considered3) * 20000);       /* NE */
+				glEnd();
+
+				glBegin(GL_TRIANGLES);
+				glVertex3f(p->return_x(node_considered2) * 20000 - 200, p->return_y(node_considered2) * 20000 - 200, p->return_z(node_considered2) * 20000);
+				glVertex3f(p->return_x(node_considered3) * 20000 - 200, p->return_y(node_considered3) * 20000 - 200, p->return_z(node_considered3) * 20000);
+				glVertex3f(p->return_x(node_considered4) * 20000 - 200, p->return_y(node_considered4) * 20000 - 200, p->return_z(node_considered4) * 20000);
+				glEnd();
+
+
+				glBegin(GL_TRIANGLES);
+				glVertex3f(p->return_x(node_considered2) * 20000 - 200, p->return_y(node_considered2) * 20000 - 200, p->return_z(node_considered2) * 20000);
+				glVertex3f(p->return_x(node_considered4) * 20000 - 200, p->return_y(node_considered4) * 20000 - 200, p->return_z(node_considered4) * 20000);
+				glVertex3f(p->return_x(node_considered1) * 20000 - 200, p->return_y(node_considered1) * 20000 - 200, p->return_z(node_considered1) * 20000);
+				glEnd();
+
+				glBegin(GL_TRIANGLES);
+				glVertex3f(p->return_x(node_considered1) * 20000 - 200, p->return_y(node_considered1) * 20000 - 200, p->return_z(node_considered1) * 20000);
+				glVertex3f(p->return_x(node_considered4) * 20000 - 200, p->return_y(node_considered4) * 20000 - 200, p->return_z(node_considered4) * 20000);
+				glVertex3f(p->return_x(node_considered3) * 20000 - 200, p->return_y(node_considered3) * 20000 - 200, p->return_z(node_considered3) * 20000);
+				glEnd();
+			}
+
 		}
 		else if (p->return_dim() == 2){
 			//glColor4f(p->global_stress_mises[i]*10.0, 0.2, 0.5, 0.5);
@@ -836,13 +865,38 @@ void drawMesh(Geometry *p){
 	glColor3f(0.6f, 1.0f, 0.6f);
 	glPointSize(10.0);
 
+#if 0 //forces display nodes
 	for (int l = 0; l < 20; l++){
 		glBegin(GL_POINTS);
 		int dummy = node_interested_draw1 + l;
 		glVertex3f(p->return_x(dummy) * 20000 - 200, p->return_y(dummy) * 20000 - 200, p->return_z(dummy) * 20000);
 		//glVertex3f(p->return_x(node_interested_draw2) * 20000 - 200, p->return_y(node_interested_draw2) * 20000 - 200, p->return_z(node_interested_draw2) * 20000);
 		glEnd();
+	}  
+#endif // 0 //forces display nodes
+	int station_nodes[17] = { 1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 61, 634 };
+	//int station_nodes[1] = { 0};
+#if 1 //forces display nodes
+	for (int l = 0; l < 17; l++){
+		glBegin(GL_POINTS);
+		glColor3f(1.0, 0.0, 0.5);
+		glVertex3f(p->return_x(station_nodes[l]-1) * 20000 - 200, p->return_y(station_nodes[l]-1) * 20000 - 200, 0* 20000);
+		//glVertex3f(p->return_x(node_interested_draw2) * 20000 - 200, p->return_y(node_interested_draw2) * 20000 - 200, p->return_z(node_interested_draw2) * 20000);
+		glEnd();
 	}
+
+
+
+	//int force_dummy = 483 - 1;
+	//glBegin(GL_POINTS);
+	//glColor3f(1.0, 1.0, 0.5);
+	//glVertex3f(p->return_x(station_nodes[force_dummy]) * 20000 - 200, p->return_y(station_nodes[force_dummy]) * 20000 - 200, 0);
+	////glVertex3f(p->return_x(node_interested_draw2) * 20000 - 200, p->return_y(node_interested_draw2) * 20000 - 200, p->return_z(node_interested_draw2) * 20000);
+	//glEnd();
+	
+#endif // 0 //forces display nodes
+
+
 #if 0
 	glVertex3f(p->return_x(0) * 400 - 200, p->return_y(0) * 400 - 200, p->return_z(0) * 400);
 
@@ -907,19 +961,21 @@ int draw_things(Geometry *p)
 	glfwMakeContextCurrent(window);
 
 	glfwPollEvents();
-	int num_station_nodes = 1;
-	int station_nodes[1] = { 0};
+	int num_station_nodes = 16;
+	//int station_nodes[1] = { 0 };
+	int station_nodes[16] = { 1  ,   5 ,    9 ,  13   , 17,    21  ,  25  ,29 ,   33 ,   37   , 41,    45,    49 ,  53  ,  57 ,   61 };
 	//int station_nodes[7] = { 0, 2, 3, 40, 5, 6, 1 };
 	///-cmiss
 	double duration_K;
 	bool cuda_init = false;
 	int display_counter = 0;
 	//initilizing all of the vectors
+	p->initialize_CUDA();
 	if (p->get_dynamic())
 		p->initialize_dynamic();
 	p->set_beta1(0.9); // if beta_2 >= beta1 and beta > 1/2 then the time stepping scheme is unconditionally stable.
 	p->set_beta2(0.9);
-	p->set_dt(0.5);
+	p->set_dt(0.05);
 	/*p->set_dynamic_alpha(0.2);
 	p->set_dynamic_xi(0.2);*/
 	p->set_dynamic_alpha(0.2);
@@ -928,10 +984,10 @@ int draw_things(Geometry *p)
 
 	p->set_beta1(0.9); // if beta_2 >= beta1 and beta > 1/2 then the time stepping scheme is unconditionally stable.
 	p->set_beta2(0.9);
-	p->set_dt(0.08);
+	p->set_dt(0.1);
 	p->set_dynamic_alpha(0.2);
-	p->set_dynamic_xi(0.83);
-	p->initialize_zerovector(7);
+	p->set_dynamic_xi(0.23);
+	p->initialize_zerovector(num_station_nodes);
 	//next we set what nodes we want to make stable
 	int points[9];
 	for (int i = 0; i < 9; i++){
@@ -939,6 +995,7 @@ int draw_things(Geometry *p)
 
 	}
 	p->set_density(1000.0);
+	
 	p->set_zero_nodes(station_nodes);
 	int numNodes = p->return_numNodes();
 	std::string cuda_string;
@@ -1068,14 +1125,18 @@ int draw_things(Geometry *p)
 			//p->sudo_force_value.clear();
 			p->sudo_force_index[0] = node_interested_draw1;
 			p->sudo_force_index[1] = node_interested_draw2;
-			double divisor2 =50.0;
+			double divisor2 =100.0;
+			int node_force[20] = { 574, 576, 578, 580, 582, 584, 586, 588, 590, 592, 594, 596, 598, 600, 602, 604, 606, 608, 610, 612 };
 			for (int hj = 0; hj < (p->num_s_force); hj++){
+#if 0
 				p->sudo_force_index[hj] = node_interested_draw1 + hj;
+#endif // 0
+				p->sudo_force_index[hj] = node_force[hj];
 				//p->sudo_force_index[hj] = node_interested_draw2 + hj;
-				p->sudo_force_value1[hj] = (2.0 / divisor2);
+				p->sudo_force_value1[hj] = -(2.0 / divisor2);
 				//p->sudo_force_value1[1] = (2.0 / divisor2);
 
-				p->sudo_force_value2[hj] = (2.0 / divisor2);
+				p->sudo_force_value2[hj] = -(2.0 / divisor2);
 				//p->sudo_force_value2[1] = (2.0 / divisor2);
 			}
 			p->make_K_matrix();
@@ -1108,13 +1169,13 @@ int draw_things(Geometry *p)
 	}
 	else{
 		for (;;){
-			if (display_counter < 20){
+			if (display_counter < 100){
 				/*p->setSudoNode(100);
 				p->setSudoForcex(1.0);
 				p->setSudoForcey(1.0);*/
-				p->sudo_force_index[0] = 20;
-				p->sudo_force_index[1] = 20;
-				double divisor2 = 200.0;
+				p->sudo_force_index[0] = 634-1;
+				p->sudo_force_index[1] = 634 - 1;
+				double divisor2 = 20.0;
 
 				p->sudo_force_value1[0] = (1.0 / divisor2);
 				p->sudo_force_value1[1] = (1.0 / divisor2);
@@ -1124,18 +1185,19 @@ int draw_things(Geometry *p)
 			}
 			else {
 				p->setSudoNode(6);
+				p->sudo_force_index[0] = 634 - 1;
+				p->sudo_force_index[1] = 634 - 1;
 				p->setSudoForcex(0);
 				p->setSudoForcey(0);
-				double divisor2 = 1.0;
-				p->sudo_force_index[0] = 20;
-				p->sudo_force_index[1] = 20;
+				double divisor2 = 100.0;
+				
 				p->sudo_force_value1[0] = -(0.0 / divisor2);
 				p->sudo_force_value1[1] = -(0.0 / divisor2);
 
-				p->sudo_force_value2[0] = -(0.0 / divisor2);
+				p->sudo_force_value2[0] = (0.0 / divisor2);
 				p->sudo_force_value2[1] = -(0.0 / divisor2);
 
-
+				std::cout << "after force" << std::endl;
 			}
 			
 			/*if (display_counter == 500){

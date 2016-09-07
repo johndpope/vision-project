@@ -1,6 +1,7 @@
 #include "glut.h"
 #include "vision_main.h"
-
+const int width = 512;
+const int height = 424;
 #include <iostream>
 using namespace std;
 void draw() {

@@ -44,6 +44,7 @@ class Geometry{
 	int *dev_numNodes = NULL; //numnodes for the device
 	double *x=NULL, *y=NULL, *z = NULL;
 	double *d_x = NULL, *d_y = NULL, *d_z = NULL;
+	double *x_init = NULL, *y_init = NULL;
 	double *d_x_dist = NULL, *d_y_dist = NULL, *d_z_dist = NULL;
 
 	//Elements
