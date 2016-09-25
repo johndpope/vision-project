@@ -209,12 +209,21 @@ vector<Point2f> aruco_position;//we have t+1
 vector<Point2f> aruco_postion2;
 vector<Point2f> meshnode_position;//we have t
 vector<Point2f> meshnode_position2;
-int node_interested = 18 - 1;
-int node_interested2 = 634 - 1;
+vector<Point2f> meshnode_position3;
+vector<Point2f> meshnode_position4;
+int node_interested = 15 - 1; //edge1 from matlab
+int node_interested2 = 138 - 1; //edge3 from matlab
+int node_interested3 = 14- 1; //edge4 from matlab
+int node_interested4 = 137 - 1; //edge2 from matlab
 vector<Point2f> diff;//the diff vector for sudoforce 1
 vector<Point2f> diff2;// diff vector for sudoforce2
-vector<Point3f> diff3D;// diff vector for sudoforce2
+vector<Point2f> diff3;// diff vector for sudoforce2 
+vector<Point2f> diff4;// diff vector for sudoforce2
+vector<Point3f> diff3D;// diff vector for sudoforce2f
 vector<Point3f> diff3D2;// diff vector for sudoforce2
+int num_green_dots=0;
+//int green_nodes[1] = { 108, 109, 110, 111, 112, 113, 208, 209, 210, 211, 212, 213, 308, 309, 310, 311, 312, 313 };
+int green_nodes[1] = { 0 };
 //chessboard markers
 #define FEM_USE false
 int counter = 0;
@@ -399,8 +408,10 @@ void getDepthData(IMultiSourceFrame* frame, GLubyte* dest) {
 
 void get_mesh(Geometry *p){
 	int e = p->return_numElems();
+	double total_FEM_time = std::clock();
+
 	// global_geo.return_numElems()
-	if (1){
+	if (0){
 
 		/*if (display_counter == 500){
 		p->setSudoNode(20);
@@ -464,12 +475,17 @@ void get_mesh(Geometry *p){
 			//p->sudo_force_value.clear();
 			p->sudo_force_index[0] = node_interested;
 			p->sudo_force_index[1] = node_interested2;
-
+			p->sudo_force_index[2] = node_interested3;
+			p->sudo_force_index[3] = node_interested4;
 			double d_est = 1.0;
 			p->sudo_force_value1[0] = -(diff.at(0).x / divisor);
 			p->sudo_force_value1[1] = -(diff.at(0).y / divisor);
 			p->sudo_force_value2[0] = -(diff2.at(0).x / divisor);
 			p->sudo_force_value2[1] = -(diff2.at(0).y / divisor);
+			p->sudo_force_value3[0] = -(diff3.at(0).x / divisor);
+			p->sudo_force_value3[1] = -(diff3.at(0).y / divisor);
+			p->sudo_force_value4[0] = -(diff4.at(0).x / divisor);
+			p->sudo_force_value4[1] = -(diff4.at(0).y / divisor);
 #if 0
 			p->sudo_force_value1[0] = -(diff[0].x / divisor);
 			p->sudo_force_value1[1] = -(diff[0].y / divisor);
@@ -528,7 +544,7 @@ void get_mesh(Geometry *p){
 
 
 
-		if (p->get_dynamic()){
+		if (p->get_dynamic()){//p->get_dynamic()
 			p->find_b();
 
 			p->update_vector();
@@ -542,7 +558,7 @@ void get_mesh(Geometry *p){
 	else {
 
 	}
-
+	cout << "TOTAL FEM TIME : " << (total_FEM_time - std::clock()) / ((double)CLOCKS_PER_SEC) << endl;
 
 	mesh_geometry.empty();
 	mesh_generated_var->points.clear();
@@ -589,7 +605,7 @@ void get_mesh(Geometry *p){
 	
 	pcl::transformPointCloud(*mesh_generated_var, *mesh_generated_var, *global_initial_ptr);
 	diff3D2.clear();
-	diff3D2.push_back(Point3f(mesh_generated_var->points.at(556 - 1).x, mesh_generated_var->points.at(556 - 1).y, (mesh_generated_var->points.at(556 - 1).z)));
+	diff3D2.push_back(Point3f(mesh_generated_var->points.at(1 - 1).x, mesh_generated_var->points.at(1 - 1).y, (mesh_generated_var->points.at(1 - 1).z)));
 
 	viewer->updatePointCloud(mesh_generated_var, "mesh generated");
 
@@ -602,6 +618,13 @@ void draw_mesh(Geometry *p, Mat I){
 	// global_geo.return_numElems()
 	meshnode_position.clear();
 	meshnode_position2.clear();
+	meshnode_position3.clear();
+	meshnode_position4.clear();
+
+	for (int j = 0; j < num_green_dots; j++){
+		
+		circle(I, mesh_geometry_display[green_nodes[j]], 7, Scalar(50, 10, 100), 2);
+	}
 	for (int i = 0; i < p->return_numElems(); i++){
 		int node_considered4;
 
@@ -615,11 +638,11 @@ void draw_mesh(Geometry *p, Mat I){
 
 
 
-		int thickness = 1;
-		int lineType = 8;
+		int thickness = 1.9;
+		LineTypes lineType = LINE_AA;
 
 		//GpuMat image1(Size(1902, 1080), CV_8U);
-		Scalar color_line = Scalar(200, 0, 200);
+		Scalar color_line = Scalar(0, 0,0);
 		line(I, mesh_geometry_display[node_considered1], mesh_geometry_display[node_considered2], color_line, thickness, lineType);
 
 		line(I, mesh_geometry_display[node_considered3], mesh_geometry_display[node_considered1], color_line, thickness, lineType);
@@ -641,38 +664,77 @@ void draw_mesh(Geometry *p, Mat I){
 		if (node_considered1 == node_interested){
 			meshnode_position.push_back((mesh_geometry_display[node_considered1]));
 			circle(I, mesh_geometry_display[node_considered1], 20, Scalar(0, 100, 255), 4);
-			putText(I, to_string(mesh_geometry_display[node_considered1].x) + "   " + to_string(mesh_geometry_display[node_considered1].y), mesh_geometry_display[node_considered1], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+			//putText(I, to_string(mesh_geometry_display[node_considered1].x) + "   " + to_string(mesh_geometry_display[node_considered1].y), mesh_geometry_display[node_considered1], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
 		}
 		else if (node_considered2 == node_interested){
 			meshnode_position.push_back((mesh_geometry_display[node_considered2]));
 			circle(I, mesh_geometry_display[node_considered2], 20, Scalar(0, 100, 255), 4);
-			putText(I, to_string(mesh_geometry_display[node_considered2].x) + "   " + to_string(mesh_geometry_display[node_considered2].y), mesh_geometry_display[node_considered2], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+			//putText(I, to_string(mesh_geometry_display[node_considered2].x) + "   " + to_string(mesh_geometry_display[node_considered2].y), mesh_geometry_display[node_considered2], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
 
 		}
 		else if (node_considered3 == node_interested){
 			meshnode_position.push_back((mesh_geometry_display[node_considered3]));
 			circle(I, mesh_geometry_display[node_considered3], 20, Scalar(0, 100, 255), 4);
-			putText(I, to_string(mesh_geometry_display[node_considered3].x) + "   " + to_string(mesh_geometry_display[node_considered3].y), mesh_geometry_display[node_considered3], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+			//putText(I, to_string(mesh_geometry_display[node_considered3].x) + "   " + to_string(mesh_geometry_display[node_considered3].y), mesh_geometry_display[node_considered3], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
 
 		}
 		//node_interested2
 		if (node_considered1 == node_interested2){
 			meshnode_position2.push_back((mesh_geometry_display[node_considered1]));
 			circle(I, mesh_geometry_display[node_considered1], 20, Scalar(255, 100, 255), 4);
-			putText(I, to_string(mesh_geometry_display[node_considered1].x) + "   " + to_string(mesh_geometry_display[node_considered1].y), mesh_geometry_display[node_considered1], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+			//putText(I, to_string(mesh_geometry_display[node_considered1].x) + "   " + to_string(mesh_geometry_display[node_considered1].y), mesh_geometry_display[node_considered1], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
 		}
 		else if (node_considered2 == node_interested2){
 			meshnode_position2.push_back((mesh_geometry_display[node_considered2]));
 			circle(I, mesh_geometry_display[node_considered2], 20, Scalar(255, 100, 255), 4);
-			putText(I, to_string(mesh_geometry_display[node_considered2].x) + "   " + to_string(mesh_geometry_display[node_considered2].y), mesh_geometry_display[node_considered2], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+			//putText(I, to_string(mesh_geometry_display[node_considered2].x) + "   " + to_string(mesh_geometry_display[node_considered2].y), mesh_geometry_display[node_considered2], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
 
 		}
 		else if (node_considered3 == node_interested2){
 			meshnode_position2.push_back((mesh_geometry_display[node_considered3]));
 			circle(I, mesh_geometry_display[node_considered3], 20, Scalar(255, 100, 255), 4);
-			putText(I, to_string(mesh_geometry_display[node_considered3].x) + "   " + to_string(mesh_geometry_display[node_considered3].y), mesh_geometry_display[node_considered3], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+			//putText(I, to_string(mesh_geometry_display[node_considered3].x) + "   " + to_string(mesh_geometry_display[node_considered3].y), mesh_geometry_display[node_considered3], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
 
 		}
+		//node_interested3
+
+		if (node_considered1 == node_interested3){
+			meshnode_position3.push_back((mesh_geometry_display[node_considered1]));
+			circle(I, mesh_geometry_display[node_considered1], 20, Scalar(255, 100, 100), 4);
+			//putText(I, to_string(mesh_geometry_display[node_considered1].x) + "   " + to_string(mesh_geometry_display[node_considered1].y), mesh_geometry_display[node_considered1], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+		}
+		else if (node_considered2 == node_interested3){
+			meshnode_position3.push_back((mesh_geometry_display[node_considered2]));
+			circle(I, mesh_geometry_display[node_considered2], 20, Scalar(255, 100, 100), 4);
+			//putText(I, to_string(mesh_geometry_display[node_considered2].x) + "   " + to_string(mesh_geometry_display[node_considered2].y), mesh_geometry_display[node_considered2], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+
+		}
+		else if (node_considered3 == node_interested3){
+			meshnode_position3.push_back((mesh_geometry_display[node_considered3]));
+			circle(I, mesh_geometry_display[node_considered3], 20, Scalar(255, 100, 100), 4);
+			//putText(I, to_string(mesh_geometry_display[node_considered3].x) + "   " + to_string(mesh_geometry_display[node_considered3].y), mesh_geometry_display[node_considered3], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+
+		}
+
+		if (node_considered1 == node_interested4){
+			meshnode_position4.push_back((mesh_geometry_display[node_considered1]));
+			circle(I, mesh_geometry_display[node_considered1], 20, Scalar(255, 100, 100), 4);
+			//putText(I, to_string(mesh_geometry_display[node_considered1].x) + "   " + to_string(mesh_geometry_display[node_considered1].y), mesh_geometry_display[node_considered1], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+		}
+		else if (node_considered2 == node_interested4){
+			meshnode_position4.push_back((mesh_geometry_display[node_considered2]));
+			circle(I, mesh_geometry_display[node_considered2], 20, Scalar(255, 100, 100), 4);
+			//putText(I, to_string(mesh_geometry_display[node_considered2].x) + "   " + to_string(mesh_geometry_display[node_considered2].y), mesh_geometry_display[node_considered2], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+
+		}
+		else if (node_considered3 == node_interested4){
+			meshnode_position4.push_back((mesh_geometry_display[node_considered3]));
+			circle(I, mesh_geometry_display[node_considered3], 20, Scalar(255, 100, 100), 4);
+			//putText(I, to_string(mesh_geometry_display[node_considered3].x) + "   " + to_string(mesh_geometry_display[node_considered3].y), mesh_geometry_display[node_considered3], FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 1.0);
+
+		}
+
+	
 		if (1){ // if draw zero u points
 			bool yes = false;
 			int node_yes;
@@ -764,7 +826,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 	//infraredFrame->CopyFrameDataToArray(widthd*heightd*4, reinterpret_cast<UINT16*>(I_infrared.data) );
 	//colorframe->CopyConvertedFrameDataToArray(colorwidth*colorheight * 4, reinterpret_cast<BYTE*>(bgrimage2), ColorImageFormat_Bgra);
 
-	std::clock_t start_K11;
+	std::clock_t aruco_time;
 	double duration_vision;
 
 
@@ -887,15 +949,14 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		const int maxRadius = 30;
 		const int cannyThreshold = 00;
 		const int votesThreshold = 0;
-		//cv::Ptr<cv::cuda::HoughCirclesDetector> houghCircles = cv::cuda::createHoughCirclesDetector(dp, minDist, cannyThreshold, votesThreshold, minRadius, maxRadius);
-		//cv::cuda::GpuMat d_circles;
-
+		cv::Ptr<cv::cuda::HoughCirclesDetector> houghCircles = cv::cuda::createHoughCirclesDetector(dp, minDist, cannyThreshold, votesThreshold, minRadius, maxRadius);
+		cv::cuda::GpuMat d_circles;
+		//imwrite("test" + to_string(display_counter) + ".jpg", I);
 
 		input_gpu.upload(I);
 
 		cuda::cvtColor(input_gpu, output_gpu, COLOR_BGR2HSV);
-
-		//houghCircles->detect(output_gpu, d_circles);
+		
 		//d_circles.download(circles_detected);
 		output_gpu.download(hsv);
 
@@ -907,7 +968,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 
 
 
-		double resize_num = 4.0;
+		double resize_num = 2.0;
 
 		resize(I_gray, I_gray_resize, Size(colorwidth / resize_num, colorheight / resize_num));
 		//resize(hsv, hsv, Size(colorwidth / 4, colorheight / 4));
@@ -941,9 +1002,10 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		//imshow("ff", I_gray_resize);
 		//-------------------ARUCO-------------------------
 		if (1){
-			start_K11 = std::clock();
 
-			detectMarkers(I_gray_resize, dictionary, markerCorners, markerIds);
+			aruco_time = std::clock();
+
+			//detectMarkers(I_gray_resize, dictionary, markerCorners, markerIds);
 			/*aruco_center.clear();
 			aruco_center.reserve(6);*/
 
@@ -952,7 +1014,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 			if (markerIds.size() > 0){
 				//	//cv::aruco::drawDetectedMarkers(image, markerCorners, markerIds);
 				int dummy_size = markerIds.size();
-				if (dummy_size==4) {
+				if (dummy_size>4) {
 					markerCount_global = 4;
 				}
 				else{
@@ -975,22 +1037,22 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 					}
 					if (markerIds[i] == 4){
 						aruco_center.at(0) = (Point2f(x_ave / 4.0, y_ave / 4.0));
-						circle(I, aruco_center[i], 10, cv::Scalar(255, 0, 0), 3);
+						circle(I, aruco_center[0], 10, cv::Scalar(255, 0, 0), 3);
 						aruco_position.push_back(Point2f(x_ave / 4.0, y_ave / 4.0));
 					}
 					else if (markerIds[i] == 9){
 						aruco_center.at(1) = (Point2f(x_ave / 4.0, y_ave / 4.0));
-						circle(I, aruco_center[i], 10, cv::Scalar(255, 0, 0), 3);
+						circle(I, aruco_center[1], 10, cv::Scalar(255, 0, 0), 3);
 						aruco_position.push_back(Point2f(x_ave / 4.0, y_ave / 4.0));
 					}
 					else if (markerIds[i] == 1){
 						aruco_center.at(2) = (Point2f(x_ave / 4.0, y_ave / 4.0));
-						circle(I, aruco_center[i], 10, cv::Scalar(255, 0, 0), 3);
+						circle(I, aruco_center[2], 10, cv::Scalar(255, 0, 0), 3);
 						aruco_position.push_back(Point2f(x_ave / 4.0, y_ave / 4.0));
 					}
 					else if (markerIds[i] == 2){
 						aruco_center.at(3) = (Point2f(x_ave / 4.0, y_ave / 4.0));
-						circle(I, aruco_center[i], 10, cv::Scalar(255, 0, 0), 3);
+						circle(I, aruco_center[3], 10, cv::Scalar(255, 0, 0), 3);
 						aruco_position.push_back(Point2f(x_ave / 4.0, y_ave / 4.0));
 					}
 					/*else if (markerIds[i] == 3){
@@ -1095,6 +1157,8 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 					//write_counter++;
 					//in_disp.close();
 				}
+
+				cout << "ARUCO TRACKING TIME : " << (aruco_time - std::clock()) / ((double)CLOCKS_PER_SEC) << endl;
 				if (dummy_aruco->points.size() == 4){
 					icp.setInputTarget(dummy_aruco);
 					icp.align(*xcloud_box);
@@ -1196,12 +1260,12 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 		/*Mat dummy_image = Mat::zeros(colorheight, colorwidth, CV_8UC4);*/
 		colorImage.release();
 		colorImage = Mat::zeros(colorheight, colorwidth, CV_8UC4);
-		//cloud->points.clear();
+		cloud->points.clear();
 		pcl::PointXYZRGB dummyVar;
 		//pcl::PointXYZRGB point_cloud_considered;
 #if 1
-		for (int h = 0; h < colorheight; h +=100 ){//colorheight
-			for (int w = 0; w < colorwidth; w += 100){//colorwidth
+		for (int h = 0; h < colorheight; h +=3 ){//colorheight
+			for (int w = 0; w < colorwidth; w += 3){//colorwidth
 				int index3 = h*colorwidth + w;
 				ColorSpacePoint dummycolor;
 
@@ -1213,6 +1277,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 					/*CameraSpacePoint q = depth2xyz[depth_index]*/
 					ColorSpacePoint p = depth2rgb[depth_index];
 					CameraSpacePoint world_point_camera = depth2xyz[depth_index];
+					//int idx = ((int)p.X) + colorwidth*((int)p.Y);
 					int idx = ((int)p.X) + colorwidth*((int)p.Y);
 					double actualx = (p.X - c_x)*world_point_camera.Z / f_x;
 					double actualy = (p.Y - c_y)*world_point_camera.Z / f_y;
@@ -1222,7 +1287,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 					/*colorImage.data[index3_color + 0] = rgbimage[4 * idx + 0];
 					colorImage.data[index3_color + 1] = rgbimage[4 * idx + 1];*/
 					//current
-					if ((world_point_camera.Z < 2.0)){
+					//if ((world_point_camera.Z < 2.0)){
 						if ((0.0 < world_point_camera.Z)){
 							//if ((rgbimage[4 * idx + 0] <150) && (rgbimage[4 * idx + 1] > 100) && (rgbimage[4 * idx + 2] < 150)){
 							colorImage.data[index3_color + 0] = rgbimage[4 * idx + 0]; // i assume here that colorimage is bgr?
@@ -1245,7 +1310,7 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 							//}
 						}
 						//}
-					}
+					//}
 
 					/*colorImage.data[index3_color + 0] = rgbimage[4 * idx + 0];
 					colorImage.data[index3_color + 1] = rgbimage[4 * idx + 1];
@@ -1283,20 +1348,24 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 
 		//circle detection
 #if 0
-		Scalar greenlow = Scalar(50, 50, 50);
-		Scalar greenhigh = Scalar(75, 220, 220);
+		Scalar greenlow = Scalar(60-20, 100, 100);
+		Scalar greenhigh = Scalar(60+20, 255, 255);
 		inRange(hsv, greenlow, greenhigh, I_inrangegreen);
-		imshow("GREEN", I_inrangegreen);
-		HoughCircles(I_inrangegreen, circles_detected, CV_HOUGH_GRADIENT, 1, I_inrangegreen.rows / 8, 200, 100, 0, 100);
+		GaussianBlur(I_inrangegreen, I_inrangegreen, Size(9, 9), 2, 2);
+		
+		HoughCircles(I_inrangegreen, circles_detected, CV_HOUGH_GRADIENT, 1, I_inrangegreen.rows / 8, 100, 20, 0, 20);
 
+
+
+		imshow("GREEN", I_inrangegreen);
 #endif // 0
 
 		//dummy_image.release();
-		if (0){
+		if (1){
 
 
-			Scalar greenlow = Scalar(50, 50, 50);
-			Scalar greenhigh = Scalar(75, 220, 220);
+			Scalar greenlow = Scalar(60 - 30, 100, 100);
+			Scalar greenhigh = Scalar(60 + 30, 255, 255);
 
 			Scalar bluelow = Scalar(80, 50, 50);
 			Scalar bluehigh = Scalar(140, 255, 255);
@@ -1320,14 +1389,18 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 			imshow("red", I_inrangered);
 			*/
 
-			bitwise_or(I_inrangeyellow, I_inrangeblue, I_inrangeblue);
-			bitwise_or(I_inrangered, I_inrangegreen, I_inrangegreen);
-			bitwise_or(I_inrangeblue, I_inrangegreen, I_inrange);
-			imshow("blue", I_inrange);
+			///bitwise_or(I_inrangeyellow, I_inrangeblue, I_inrangeblue);
+			//bitwise_or(I_inrangered, I_inrangegreen, I_inrangegreen);
+			//bitwise_or(I_inrangeblue, I_inrangegreen, I_inrange);
+			bitwise_or(I_inrangegreen, I_inrangegreen, I_inrange);
+			
 			Mat element = getStructuringElement(MORPH_ELLIPSE, Size(5, 5), Point(0, 0));
+			GaussianBlur(I_inrange, I_inrange, Size(9, 9), 2, 2);
 			erode(I_inrange, I_inrange, element);
 
 			dilate(I_inrange, I_inrange, element);
+
+			
 			imshow("blue", I_inrange);
 			//imshow("i-range", I_inrange);
 			vector<Vec4i> hierarchy;
@@ -1354,8 +1427,17 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 
 			}
 
+			for (int i = 0; i < contours.size(); i++)
+			{
+
+				
+
+				circle(I, center[i], radius[i], 1);
+			}
+			
 			//////////////////////
 			//std::ofstream in_disp(to_string(write_counter)+"mesh.txt");
+
 			int x_pos = 0, y_pos = 0;
 			int dummpy_used;
 			string s;
@@ -1569,16 +1651,17 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 
 
 		//imshow("original", I);
-		if (1)//DRAW VERY IMPORTANT!!!!!!!!!!!
+		if (0)//DRAW VERY IMPORTANT!!!!!!!!!!!
 		{/*
 		 diff.clear();
 		 diff2.clear();
 		 diff.push_back(Point2f(0.0, 0.0));
 		 diff2.push_back(Point2f(0.0, 0.0));*/
 			//solvePnP(Mat(geo_deform), Mat(tracking_colors), instrinsics, distortion, rvec_new, tvec_new, false);
+			double time_augment = std::clock();
 			if (1){
-				if (initial_pnp){
-					if (markerCount_global == partial_cube.size()){
+				if (((norm(diff) + norm(diff2) + norm(diff3) + norm(diff4))>45.00) || initial_pnp){//
+					if (markerCount_global == 4){
 						solvePnP(Mat(partial_cube), Mat(aruco_center), instrinsics, distortion, rvec_new, tvec_new, false);
 						
 						initial_pnp = false;
@@ -1596,27 +1679,48 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 
 				draw_mesh(geo_ptr, I);
 
+				cout << "TOTAL SOLVEPNP AND PROJECTION TIME : " << (time_augment - std::clock()) / ((double)CLOCKS_PER_SEC) << endl;
 		}
-			if (1){ //if there is an aruco marker
-				for (int dummy_i = 0; dummy_i < markerIds.size(); dummy_i++){
+			if (markerCount_global==4){ //if there is an aruco marker
+				for (int dummy_i = 0; dummy_i < markerCount_global; dummy_i++){ // changed limit from .size()
 					if (markerIds[dummy_i] == 1){
 						diff.clear();
 						diff.push_back(Point2f((aruco_position[dummy_i].x - meshnode_position[0].x), (aruco_position[dummy_i].y - meshnode_position[0].y)));
-						if (cv::norm(diff) > 30){
+						if (cv::norm(diff) > 100){
 							diff.clear();
 							diff.push_back(Point2f(0.0, 0.0));
 						}
-						putText(I, "Force 1: " + to_string(diff[0].x) + "  " + to_string(diff[0].y), Point2f(50.0, 50.0), 2, 3, Scalar(100, 100, 255), 2, -1);
+						putText(I, "Hello 1: " + to_string(diff[0].x) + "  " + to_string(diff[0].y), Point2f(50.0, 50.0), 2, 1.5, Scalar(100, 100, 255), 2, -1);
 
 					}
 					else if (markerIds[dummy_i] == 2){
 						diff2.clear();
 						diff2.push_back(Point2f((aruco_position[dummy_i].x - meshnode_position2[0].x), (aruco_position[dummy_i].y - meshnode_position2[0].y)));
-						if (cv::norm(diff2) > 30){
+						if (cv::norm(diff2) > 100){
 							diff2.clear();
 							diff2.push_back(Point2f(0.0, 0.0));
 						}
-						putText(I, "Force 2: " + to_string(diff2[0].x) + "  " + to_string(diff2[0].y), Point2f(50.0, 150.0), 2, 3, Scalar(100, 100, 255), 2, -1);
+						putText(I, "David 2: " + to_string(diff2[0].x) + "  " + to_string(diff2[0].y), Point2f(50.0, 150.0), 2, 1.5, Scalar(100, 100, 255), 2, -1);
+
+					}
+					else if (markerIds[dummy_i] == 9){
+						diff3.clear();
+						diff3.push_back(Point2f((aruco_position[dummy_i].x - meshnode_position3[0].x), (aruco_position[dummy_i].y - meshnode_position3[0].y)));
+						if (cv::norm(diff3) > 100){
+							diff3.clear();
+							diff3.push_back(Point2f(0.0, 0.0));
+						}
+						putText(I, "You 3: " + to_string(diff3[0].x) + "  " + to_string(diff3[0].y), Point2f(50.0, 250.0), 2, 1.5, Scalar(100, 100, 255), 2, -1);
+
+					}
+					else if (markerIds[dummy_i] == 4){
+						diff4.clear();
+						diff4.push_back(Point2f((aruco_position[dummy_i].x - meshnode_position4[0].x), (aruco_position[dummy_i].y - meshnode_position4[0].y)));
+						if (cv::norm(diff4) > 100){
+							diff4.clear();
+							diff4.push_back(Point2f(0.0, 0.0));
+						}
+						putText(I, "Suck 4: " + to_string(diff4[0].x) + "  " + to_string(diff4[0].y), Point2f(50.0, 350.0), 2, 1.5, Scalar(100, 100, 255), 2, -1);
 
 					}
 
@@ -1628,6 +1732,11 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 				diff.push_back(Point2f(0.0, 0.0));
 				diff2.clear();
 				diff2.push_back(Point2f(0.0, 0.0));
+				diff3.clear();
+				diff3.push_back(Point2f(0.0, 0.0));
+				diff4.clear();
+				diff4.push_back(Point2f(0.0, 0.0));
+
 			}
 			//projectPoints(geo_deform, rvec_new, tvec_new, instrinsics, distortion, output_deform);
 			if (0){
@@ -1647,14 +1756,16 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 				circle(I, Point2f(circles_detected[jk].x, circles_detected[jk].y), circles_detected[jk].z, Scalar(0, 100, 255), 4);
 			}
 
-			imshow("original", I);
+			//imshow("original", I);
+		
 
 			//imshow("colorimage", colorImage);
 			//imshow("In range", I_inrange);
 			first_geo_init = false;
 
-
+			
 			get_mesh(geo_ptr);
+			
 #if 0
 
 #endif // FEM_USE
@@ -1667,6 +1778,8 @@ void getRgbData(IMultiSourceFrame* frame, GLubyte* dest) {
 	}
 
 		imshow("original", I);
+		//imwrite("with_mesh" + to_string(display_counter) + ".jpg", I);
+		
 		waitKey(1);
 
 }
@@ -1985,11 +2098,13 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 
 	p->set_beta1(0.9); // if beta_2 >= beta1 and beta > 1/2 then the time stepping scheme is unconditionally stable.
 	p->set_beta2(0.9);
-	p->set_dt(0.1);
+	p->set_dt(0.08);
 	p->set_dynamic_alpha(0.2);
 	p->set_dynamic_xi(0.23);
 	diff.push_back(Point2f(0.0, 0.0));
 	diff2.push_back(Point2f(0.0, 0.0));
+	diff3.push_back(Point2f(0.0, 0.0));
+	diff4.push_back(Point2f(0.0, 0.0));
 	//global_geo.initialize_CUDA
 	display_counter = 0;
 	first_geo_init = true;
@@ -2220,8 +2335,10 @@ int kinect_main(int argc, char* argv[], Geometry *p) {
 	/*double h = 0.06332;
 	double d = 0.1224;
 	double w = 0.14364;*/
-double d = 0.109;
-double h = 0.17338;
+double d = 0.0945825;
+double h = 0.1253975;
+
+
 	double w = 0.14364;
 	xcloud_box->points.push_back(pcl::PointXYZ(d, 0, 0.0));
 	xcloud_box->points.push_back(pcl::PointXYZ(0.0, 0.0, 0.0));

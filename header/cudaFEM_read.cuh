@@ -157,8 +157,10 @@ public:
 		//sudo force vector for 2 forces
 		int num_s_force = 20;
 		int sudo_force_index[20];
-		double sudo_force_value1[20];
-		double sudo_force_value2[20];
+		double sudo_force_value1[2];
+		double sudo_force_value2[2];
+		double sudo_force_value3[2];
+		double sudo_force_value4[2];
 		//SF vector values
 	//	std::vector<cv::Point2f> sudo_force_value(2);
 	void read_nodes(void);

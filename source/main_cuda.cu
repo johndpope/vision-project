@@ -28,7 +28,7 @@ int main(void){
 	
 
 	testing_geo.set_YoungPoisson(20000.0, 0.49);
-	testing_geo.set_thickness(0.05);
+	testing_geo.set_thickness(0.0118);
 	testing_geo.initilizeMatrices();
 	testing_geo.initialize_CUDA();
 	//if you want the dynamic fem, put dynamic to true and cuda to false.

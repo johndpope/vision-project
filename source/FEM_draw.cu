@@ -963,7 +963,7 @@ int draw_things(Geometry *p)
 	glfwPollEvents();
 	int num_station_nodes = 16;
 	//int station_nodes[1] = { 0 };
-	int station_nodes[16] = { 1  ,   5 ,    9 ,  13   , 17,    21  ,  25  ,29 ,   33 ,   37   , 41,    45,    49 ,  53  ,  57 ,   61 };
+	int station_nodes[16] = { 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 };
 	//int station_nodes[7] = { 0, 2, 3, 40, 5, 6, 1 };
 	///-cmiss
 	double duration_K;
@@ -1108,7 +1108,7 @@ int draw_things(Geometry *p)
 			
 			std::clock_t start_K;
 			std::clock_t start_Solver;
-			start_K = std::clock();
+			
 
 			//Solve the 2D FEM in each frame
 #if 0
@@ -1126,7 +1126,7 @@ int draw_things(Geometry *p)
 			p->sudo_force_index[0] = node_interested_draw1;
 			p->sudo_force_index[1] = node_interested_draw2;
 			double divisor2 =100.0;
-			int node_force[20] = { 574, 576, 578, 580, 582, 584, 586, 588, 590, 592, 594, 596, 598, 600, 602, 604, 606, 608, 610, 612 };
+			int node_force[20] = { p->return_numNodes()-1, p->return_numNodes()-1, 578, 580, 582, 584, 586, 588, 590, 592, 594, 596, 598, 600, 602, 604, 606, 608, 610, 612 };
 			for (int hj = 0; hj < (p->num_s_force); hj++){
 #if 0
 				p->sudo_force_index[hj] = node_interested_draw1 + hj;
@@ -1139,6 +1139,7 @@ int draw_things(Geometry *p)
 				p->sudo_force_value2[hj] = -(2.0 / divisor2);
 				//p->sudo_force_value2[1] = (2.0 / divisor2);
 			}
+			start_K = std::clock();
 			p->make_K_matrix();
 			duration_K = (std::clock() - start_K) / (double)CLOCKS_PER_SEC;
 			//p->Linear2DBarycentric_B_CUDA_host();
@@ -1169,13 +1170,13 @@ int draw_things(Geometry *p)
 	}
 	else{
 		for (;;){
-			if (display_counter < 100){
+			if (display_counter < 2){
 				/*p->setSudoNode(100);
 				p->setSudoForcex(1.0);
 				p->setSudoForcey(1.0);*/
-				p->sudo_force_index[0] = 634-1;
-				p->sudo_force_index[1] = 634 - 1;
-				double divisor2 = 20.0;
+				p->sudo_force_index[0] = p->return_numNodes()-1;
+				p->sudo_force_index[1] = p->return_numNodes() - 1;
+				double divisor2 = 10000.0;
 
 				p->sudo_force_value1[0] = (1.0 / divisor2);
 				p->sudo_force_value1[1] = (1.0 / divisor2);
@@ -1185,11 +1186,11 @@ int draw_things(Geometry *p)
 			}
 			else {
 				p->setSudoNode(6);
-				p->sudo_force_index[0] = 634 - 1;
-				p->sudo_force_index[1] = 634 - 1;
+				p->sudo_force_index[0] = p->return_numNodes() - 1;
+				p->sudo_force_index[1] = p->return_numNodes() - 1;
 				p->setSudoForcex(0);
 				p->setSudoForcey(0);
-				double divisor2 = 100.0;
+				double divisor2 = 1000000.0;
 				
 				p->sudo_force_value1[0] = -(0.0 / divisor2);
 				p->sudo_force_value1[1] = -(0.0 / divisor2);
